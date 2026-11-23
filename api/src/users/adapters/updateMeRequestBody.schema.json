@@ -1,0 +1,11 @@
+{
+    "$id": "UpdateMeRequestBody",
+    "type": "object",
+    "additionalProperties": false,
+    "minProperties": 1,
+    "properties": {
+        "user_name": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$" },
+        "about_me": { "type": "string", "maxLength": 4096 },
+        "info_url": { "type": ["string", "null"], "format": "uri", "maxLength": 2048 }
+    }
+}

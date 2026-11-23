@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cochlea-client"
+version = "0.0.1"
+description = "Python client for the Cochlea audio annotation API"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31"]
+
+[project.optional-dependencies]
+# conjure pulls in torch, lmdb, boto3, ... so caching is opt-in
+cache = ["conjure @ git+https://github.com/JohnVinyard/conjure"]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["cochlea_client"]

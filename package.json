@@ -1,0 +1,27 @@
+{
+  "name": "cochlea",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "workspaces": [
+    "shared",
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev": "docker compose up --build --remove-orphans",
+    "dev:detached": "docker compose up --build --remove-orphans --detach --wait",
+    "dev:stop": "docker compose down",
+    "dev:logs": "docker compose logs --follow --tail=100",
+    "build-shared": "yarn workspace @cochlea/shared build",
+    "cli": "tsx api/src/cli.ts",
+    "postinstall": "yarn build-shared",
+    "typecheck": "yarn workspace @cochlea/shared build && yarn workspace @cochlea/api typecheck && yarn workspace @cochlea/web typecheck",
+    "test-unit": "yarn workspace @cochlea/api test-unit",
+    "test-api": "yarn workspace @cochlea/api test-api",
+    "arch-test": "yarn workspace @cochlea/api arch-test",
+    "ready": "yarn typecheck && yarn test-unit && yarn arch-test && yarn test-api"
+  }
+}

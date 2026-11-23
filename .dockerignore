@@ -1,0 +1,43 @@
+# Build context for images built from the repo root (docker/node.Dockerfile,
+# and any future production images).  The dev image copies nothing — source
+# is bind-mounted — but a lean context keeps builds fast, and keeps local
+# data and secrets out of images.
+
+# local data (postgres's data dir isn't even readable by the docker client)
+.data/
+
+# dependencies & build output: always installed/built inside the image
+**/node_modules/
+**/dist/
+**/build/
+**/*.tsbuildinfo
+**/.vite/
+
+# secrets
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+**/service-account*.json
+
+# vcs, editors, OS
+.git/
+.gitignore
+.obsidian/
+.idea/
+.vscode/
+**/.DS_Store
+
+# logs & test output
+**/*.log
+**/coverage/
+**/test-results/
+**/playwright-report/
+
+# python & terraform (not part of any node image)
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
+infra/
+**/.terraform/

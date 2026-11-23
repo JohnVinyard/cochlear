@@ -1,0 +1,25 @@
+{
+    "$id": "CreateSoundRequestBody",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["audio_url", "license_type", "duration_seconds"],
+    "properties": {
+        "audio_url": { "type": "string", "format": "uri", "maxLength": 2048 },
+        "info_url": { "type": ["string", "null"], "format": "uri", "maxLength": 2048 },
+        "low_quality_audio_url": { "type": ["string", "null"], "format": "uri", "maxLength": 2048 },
+        "license_type": {
+            "type": "string",
+            "enum": [
+                "https://creativecommons.org/licenses/by/4.0",
+                "https://creativecommons.org/licenses/by-sa/4.0",
+                "https://creativecommons.org/licenses/by-nd/4.0",
+                "https://creativecommons.org/licenses/by-nc/4.0",
+                "https://creativecommons.org/licenses/by-nc-sa/4.0",
+                "https://creativecommons.org/licenses/by-nc-nd/4.0",
+                "https://creativecommons.org/publicdomain/zero/1.0"
+            ]
+        },
+        "title": { "type": ["string", "null"], "maxLength": 1024 },
+        "duration_seconds": { "type": "number", "exclusiveMinimum": 0 }
+    }
+}

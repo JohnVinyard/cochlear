@@ -1,0 +1,46 @@
+{
+  "name": "@cochlea/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "start": "node build/src/index.js",
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "migrate": "tsx src/shared/db/migrate.ts",
+    "cli": "tsx src/cli.ts",
+    "test-unit": "jest --group=unit",
+    "test-api": "jest --group=api --runInBand",
+    "arch-test": "depcruise src --output-type err-long",
+    "arch-graph": "depcruise src --include-only '^src' --output-type dot | dot -T svg > architecture.svg"
+  },
+  "dependencies": {
+    "@cochlea/shared": "0.0.1",
+    "@google-cloud/storage": "^7.17.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.5.0",
+    "morgan": "^1.10.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^24.5.0",
+    "@types/pg": "^8.15.5",
+    "dependency-cruiser": "^17.0.1",
+    "jest": "^30.1.3",
+    "jest-docblock": "^30",
+    "jest-runner": "^30",
+    "jest-runner-groups": "^2.2.0",
+    "openapi-types": "^12",
+    "ts-jest": "^29.4.4",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3"
+  }
+}

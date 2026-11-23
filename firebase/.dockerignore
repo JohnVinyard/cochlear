@@ -1,0 +1,5 @@
+# The emulator image only needs firebase.json, .firebaserc and start.sh
+*
+!firebase.json
+!.firebaserc
+!start.sh
