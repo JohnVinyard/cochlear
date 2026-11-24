@@ -1,8 +1,19 @@
 import { ANNOTATION_KINDS, type AnnotationSchemaResource, type UserResource } from '@cochlea/shared';
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { api, appPath, useFeed, useResource } from '../api';
 import { ApiLink, ErrorMessage, LoadMore } from '../components';
+import { JsonView } from '../elements/JsonView';
+
+/** How many public annotations a schema has, linking to them */
+const AnnotationCount = ({ schema }: { schema: AnnotationSchemaResource }) =>
+    schema.annotation_count ? (
+        <Link to={`/annotations?${new URLSearchParams({ schema: schema.ref })}`} title="Browse them">
+            {schema.annotation_count.toLocaleString()}
+        </Link>
+    ) : (
+        <span className="muted">0</span>
+    );
 
 export const SchemasPage = () => {
     const feed = useFeed<AnnotationSchemaResource>('/annotation-schemas');
@@ -13,12 +24,13 @@ export const SchemasPage = () => {
             {me.data?.roles?.includes('ANNOTATION_SCHEMA_CREATOR') && <CreateSchema />}
             <ErrorMessage error={feed.error} />
             <table>
-                <thead><tr><th>schema</th><th>kind</th><th>description</th><th>by</th></tr></thead>
+                <thead><tr><th>schema</th><th>kind</th><th className="number" title="Public annotations">annotations</th><th>description</th><th>by</th></tr></thead>
                 <tbody>
                     {feed.items.map((s) => (
                         <tr key={s.id}>
                             <td><ApiLink href={s.links.self!}>{s.ref}</ApiLink></td>
                             <td>{s.kind}{s.vector_dim ? `(${s.vector_dim})` : ''}</td>
+                            <td className="number"><AnnotationCount schema={s} /></td>
                             <td>{s.description}</td>
                             <td><ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink></td>
                         </tr>
@@ -89,8 +101,9 @@ export const SchemaPage = () => {
             <p>{s.description}</p>
             <dl className="props">
                 <dt>kind</dt><dd>{s.kind}{s.vector_dim ? ` (dimension ${s.vector_dim})` : ''}</dd>
+                <dt>annotations</dt><dd><AnnotationCount schema={s} /> public</dd>
                 <dt>created</dt><dd>{new Date(s.created_at).toLocaleString()} by <ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink></dd>
-                <dt>data schema</dt><dd>{s.json_schema ? <pre>{JSON.stringify(s.json_schema, null, 2)}</pre> : 'none (free-form)'}</dd>
+                <dt>data schema</dt><dd>{s.json_schema ? <JsonView value={s.json_schema} lines={24} /> : 'none (free-form)'}</dd>
             </dl>
             <ApiLink href={s.links.annotations!}>Annotations using this schema</ApiLink>
         </>

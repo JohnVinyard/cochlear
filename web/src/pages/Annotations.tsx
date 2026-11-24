@@ -1,7 +1,18 @@
 import type { AnnotationResource, UserResource } from '@cochlea/shared';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { api, useFeed, useResource } from '../api';
-import { AccessBadge, AnnotationTable, AnnotationValue, ApiLink, ErrorMessage, formatSeconds, LoadMore } from '../components';
+import {
+    AccessBadge,
+    AnnotationTable,
+    AnnotationValue,
+    ApiLink,
+    ErrorMessage,
+    formatSeconds,
+    LoadMore,
+    SoundLink,
+    useSounds,
+} from '../components';
+import { JsonView } from '../elements/JsonView';
 
 export const AnnotationsPage = () => {
     const { soundId, userId } = useParams();
@@ -28,7 +39,8 @@ export const AnnotationsPage = () => {
     return (
         <>
             <h1>{soundId ? `Annotations of sound ${soundId}` : userId ? `Annotations by user ${userId}` : 'Annotations'}</h1>
-            <form className="panel search" onSubmit={filter}>
+            {/* keyed by the query, so its fields follow navigation (e.g. clicking a tag) */}
+            <form key={search.toString()} className="panel search" onSubmit={filter}>
                 <div className="row">
                     <input
                         name="q"
@@ -50,7 +62,7 @@ export const AnnotationsPage = () => {
                 />
             </form>
             <ErrorMessage error={feed.error} />
-            <AnnotationTable items={feed.items} />
+            <AnnotationTable items={feed.items} showSound={!soundId} />
             <LoadMore hasMore={feed.hasMore} loadMore={feed.loadMore} />
         </>
     );
@@ -61,9 +73,11 @@ export const AnnotationPage = () => {
     const navigate = useNavigate();
     const annotation = useResource<AnnotationResource>(`/annotations/${annotationId}`);
     const me = useResource<UserResource>('/users/me');
+    const sounds = useSounds(annotation.data ? [annotation.data.links.sound!] : []);
     if (annotation.error) return <ErrorMessage error={annotation.error} />;
     if (!annotation.data) return <p>Loading…</p>;
     const a = annotation.data;
+    const sound = sounds.get(a.links.sound!);
 
     const remove = async () => {
         if (!confirm('Delete this annotation?')) return;
@@ -74,12 +88,16 @@ export const AnnotationPage = () => {
     return (
         <>
             <h1>Annotation {a.id}</h1>
+            <p className="lead">
+                On <SoundLink href={a.links.sound!} id={a.sound_id} sound={sound} />
+                {a.start_seconds !== null && ` · ${formatSeconds(a.start_seconds)} – ${formatSeconds(a.end_seconds)}`}
+            </p>
             <dl className="props">
-                <dt>sound</dt><dd><ApiLink href={a.links.sound!}>sound {a.sound_id}</ApiLink></dd>
+                <dt>sound</dt><dd><SoundLink href={a.links.sound!} id={a.sound_id} sound={sound} /> (id {a.sound_id})</dd>
                 <dt>schema</dt><dd><ApiLink href={a.links.schema!}>{a.schema}</ApiLink> ({a.kind})</dd>
                 <dt>segment</dt><dd>{a.start_seconds === null ? 'whole sound' : `${formatSeconds(a.start_seconds)} – ${formatSeconds(a.end_seconds)}`}</dd>
                 <dt>value</dt><dd><AnnotationValue a={a} /></dd>
-                <dt>data</dt><dd><code>{JSON.stringify(a.data)}</code></dd>
+                <dt>data</dt><dd>{a.data === null || a.data === undefined ? <span className="muted">none</span> : <JsonView value={a.data} lines={16} />}</dd>
                 <dt>created</dt><dd>{new Date(a.created_at).toLocaleString()} by <ApiLink href={a.links.created_by!}>user {a.created_by}</ApiLink></dd>
                 {a.access !== undefined && <><dt>access</dt><dd><AccessBadge access={a.access} /></dd></>}
             </dl>

@@ -39,3 +39,30 @@ export const emulatorSignIn = async (
     }
     return { uid: result.body.localId, email, idToken: result.body.idToken };
 };
+
+/**
+ * Deletes these accounts from the emulator (and only these), e.g. the ones
+ * the API test suite created. Uses the emulator's admin access ("Bearer
+ * owner"), so it works only against the emulator.
+ */
+export const deleteEmulatorAccounts = async (
+    uids: string[],
+    projectId: string,
+    host = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? 'localhost:9099'
+): Promise<number> => {
+    let deleted = 0;
+    for (let i = 0; i < uids.length; i += 1000) {
+        const localIds = uids.slice(i, i + 1000);
+        const res = await fetch(
+            `http://${host}/identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:batchDelete`,
+            {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', authorization: 'Bearer owner' },
+                body: JSON.stringify({ localIds, force: true }),
+            }
+        );
+        if (!res.ok) throw new Error(`deleting emulator accounts failed: HTTP ${res.status} ${await res.text()}`);
+        deleted += localIds.length;
+    }
+    return deleted;
+};

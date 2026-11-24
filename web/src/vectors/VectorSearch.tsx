@@ -8,6 +8,7 @@ import type { LaneSegment, VectorLane as VectorLaneElement } from '../elements/v
 import '../elements/vector-lane';
 import { SegmentPlayer } from '../audio/segments';
 import { pcaColors } from './pca';
+import { StarButton } from '../favorites';
 
 /**
  * Vector annotations on the sound page: a lane per vector schema (coloured by
@@ -309,6 +310,13 @@ export const SimilarSegments = ({ query }: { query: AnnotationResource }) => {
             <p className="muted">
                 {selected ? (
                     <>
+                        <StarButton
+                            soundId={selected.sound.id}
+                            span={{
+                                start_seconds: selected.annotation.start_seconds!,
+                                duration_seconds: selected.annotation.duration_seconds!,
+                            }}
+                        />{' '}
                         ▶ <ApiLink href={selected.sound.links.self!}>{selected.sound.title ?? `sound ${selected.sound.id}`}</ApiLink>
                         {` · ${selected.annotation.start_seconds!.toFixed(2)}s – ${(
                             selected.annotation.start_seconds! + selected.annotation.duration_seconds!

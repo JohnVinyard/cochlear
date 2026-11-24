@@ -165,6 +165,8 @@ export interface AnnotationSchemaResource {
     json_schema: object | null;
     description: string;
     created_at: string;
+    /** Public, live annotations of this schema (kept by triggers; private ones aren't counted) */
+    annotation_count: number;
     created_by: UserId;
     links: Links;
 }

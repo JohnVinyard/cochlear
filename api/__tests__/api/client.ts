@@ -1,8 +1,11 @@
 /**
- * Helpers for full-stack API tests.  These run against an already-running
- * `docker compose up` stack (they never start it themselves).
+ * Helpers for full-stack API tests. They run against their own API server
+ * and database (cochlea_test), which globalSetup starts (environment.ts),
+ * using the `docker compose up` stack's Postgres, firebase emulator and fake
+ * GCS. Nothing they create reaches the development database.
  *
- *   API_BASE_URL                 default http://localhost:8080/v1
+ *   API_BASE_URL                 set by globalSetup
+ *   PGDATABASE                   set by globalSetup (cochlea_test)
  *   FIREBASE_AUTH_EMULATOR_HOST  default localhost:9099
  *   PGHOST/PGPORT/...            default localhost:5432, cochlea/cochlea
  */

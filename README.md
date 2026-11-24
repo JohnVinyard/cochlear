@@ -141,7 +141,7 @@ per-schema vector indices.
 ```bash
 yarn typecheck
 yarn test-unit       # domain unit tests
-yarn test-api        # full-stack API tests; requires `docker compose up`
+yarn test-api        # full-stack API tests; requires `docker compose up` (see below)
 yarn arch-test       # clean-architecture dependency rules
 yarn ready           # all of the above
 yarn test-python     # python client, integrations and bots (needs the .venv, with librosa for featurebot)
@@ -151,5 +151,13 @@ yarn test-all        # everything: ready, test-codec and test-python
 
 `.venv` setup: `python3 -m venv .venv && .venv/bin/pip install -e 'clients/python[dev]' -r bots/featurebot/requirements.txt`.
 
-The API tests never start the stack themselves. They sign up fresh emulator
-users, and reach Postgres directly only to grant roles.
+The API tests never touch the development database. They start their own API
+server, against their own database (`cochlea_test`, recreated and migrated on
+every run, and kept afterwards for poking at), using the stack's Postgres,
+firebase emulator and fake GCS (a bucket of their own). At the end they delete
+the emulator accounts they signed up. See `api/__tests__/api/environment.ts`.
+
+Test data that got into the development database some other way (anything on
+`example.com`, which is reserved for examples, and `@example.com` users) can be
+removed with `docker compose exec api yarn cli remove-test-data` (a dry run;
+add `--yes` to remove it).

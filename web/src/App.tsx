@@ -3,6 +3,7 @@ import { AuthProvider, logOut, useAuth } from './auth';
 import { AnnotationPage, AnnotationsPage } from './pages/Annotations';
 import { ApiDocsPage } from './pages/ApiDocs';
 import { CodecLab } from './pages/CodecLab';
+import { FavoritesPage } from './pages/Favorites';
 import { LabsPage } from './pages/Labs';
 import { LoginPage } from './pages/Login';
 import { SchemaPage, SchemasPage } from './pages/Schemas';
@@ -36,6 +37,7 @@ export const App = () => (
                     <Route path="api-keys" element={<ApiKeysPage />} />
                     <Route path="api-docs" element={<ApiDocsPage />} />
                     <Route path="labs" element={<LabsPage />} />
+                    <Route path="favorites" element={<FavoritesPage />} />
                     <Route path="*" element={<p>Not found.</p>} />
                 </Route>
             </Routes>
@@ -55,6 +57,7 @@ const Layout = () => {
                 <NavLink to="/sounds" end>Sounds</NavLink>
                 <NavLink to="/annotations" end>Annotations</NavLink>
                 <NavLink to="/annotation-schemas" end>Schemas</NavLink>
+                <NavLink to="/favorites">Favorites</NavLink>
                 <NavLink to="/api-docs">API</NavLink>
                 <NavLink to="/labs" end>Labs</NavLink>
                 <span className="spacer" />

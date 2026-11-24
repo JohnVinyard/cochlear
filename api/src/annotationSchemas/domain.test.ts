@@ -30,6 +30,7 @@ const inMemory = (indexed = new Set<AnnotationSchemaId>()): AnnotationSchemasPer
                 ...schema,
                 id: (schemas.length + 1) as AnnotationSchemaId,
                 version: (latest?.version ?? 0) + 1,
+                annotationCount: 0,
                 createdAt: new Date(),
                 createdBy,
             };

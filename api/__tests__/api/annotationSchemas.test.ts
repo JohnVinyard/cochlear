@@ -1,5 +1,5 @@
 /** @group api */
-import { closeDb, grantRole, newUser, uniqueSuffix } from './client';
+import { closeDb, createSound, grantRole, newUser, uniqueSuffix } from './client';
 
 afterAll(closeDb);
 
@@ -59,5 +59,25 @@ describe('annotation schemas', () => {
             json_schema: { type: 'object', required: ['confidence'], properties: { confidence: { type: 'number' } } },
         });
         expect(good.status).toBe(201);
+    });
+
+    it('count their public, live annotations', async () => {
+        const user = await newUser();
+        await grantRole(user, 'ANNOTATION_SCHEMA_CREATOR');
+        const name = `counted-${uniqueSuffix()}`;
+        const created = await user.client.post('/annotation-schemas', { name, kind: 'tags' });
+        expect(created.body.annotation_count).toBe(0);
+        const sound = await createSound(user);
+        const res = await user.client.post(sound.links.annotations, {
+            annotations: [
+                { schema: `${name}@1`, tags: ['a'], access: '*' },
+                { schema: `${name}@1`, tags: ['b'], access: '*' },
+                { schema: `${name}@1`, tags: ['private'], access: null }, // not counted
+            ],
+        });
+        const count = async () => (await user.client.get(`/annotation-schemas/${name}@1`)).body.annotation_count;
+        expect(await count()).toBe(2);
+        await user.client.delete(`/annotations/${res.body.items[0].id}`);
+        expect(await count()).toBe(1);
     });
 });

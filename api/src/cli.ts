@@ -5,6 +5,7 @@
  *   yarn cli revoke-role <email> <ROLE>
  *   yarn cli dev-token <email>          (firebase emulator only)
  *   yarn cli clear-data [--keep-ids]    (local databases only)
+ *   yarn cli remove-test-data [--yes]   (local databases only)
  *   yarn cli create-bot <user_name> [--about TEXT] [--info-url URL]
  *
  * Inside docker compose:  docker compose exec api yarn cli ...
@@ -13,7 +14,8 @@ import { parseArgs } from 'node:util';
 import { isRole, type Role, ROLES } from '@cochlea/shared';
 import { buildApiKeys } from './apiKeys';
 import { assertLocalDatabase, clearSoundsAndAnnotations } from './devtools/clearData';
-import { emulatorSignIn } from './devtools/firebaseEmulator';
+import { deleteEmulatorAccounts, emulatorSignIn } from './devtools/firebaseEmulator';
+import { countTestData, dropIndexes, removeTestData } from './devtools/removeTestData';
 import { createPool, dbConfigFromEnv } from './shared/db/pool';
 import { buildUsers } from './users';
 
@@ -35,6 +37,8 @@ const usage = (): never => {
             '  yarn cli revoke-role <email> <ROLE>',
             '  yarn cli dev-token <email>',
             '  yarn cli clear-data [--keep-ids]   delete all sounds and annotations, and reset user state (local databases only)',
+            '  yarn cli remove-test-data [--yes]  delete test data: @example.com users and what they own, and sounds on',
+            '                                     example.com (local databases only; without --yes, only reports)',
             '  yarn cli create-bot <user_name> [--about TEXT] [--info-url URL]',
             '                                     create or update a bot user and print a new API key for it',
             '',
@@ -46,6 +50,34 @@ const usage = (): never => {
 
 const main = async () => {
     const [command, email, role] = process.argv.slice(2);
+
+    if (command === 'remove-test-data') {
+        const flags = process.argv.slice(3);
+        if (flags.some((f) => f !== '--yes')) usage();
+        const db = dbConfigFromEnv();
+        assertLocalDatabase(db.host);
+        const pool = createPool(db);
+        try {
+            const describe = (c: Awaited<ReturnType<typeof countTestData>>) =>
+                `${c.users} users, ${c.sounds} sounds, ${c.schemas} schemas (${c.vectorIndexes} with vector indices), ` +
+                `${c.annotations} annotations (${c.realUsersAnnotations} of them by other users, on test sounds)`;
+            if (!flags.includes('--yes')) {
+                console.log(`would remove ${describe(await countTestData(pool))}; run with --yes to remove them`);
+                return;
+            }
+            const removed = await removeTestData(pool);
+            console.log(`removed ${describe(removed)}`);
+            await dropIndexes(pool, removed.vectorIndexNames);
+            console.log(`dropped ${removed.vectorIndexNames.length} vector indices`);
+            if (removed.firebaseUids.length && process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+                const n = await deleteEmulatorAccounts(removed.firebaseUids, process.env.FIREBASE_PROJECT_ID ?? 'demo-cochlea');
+                console.log(`deleted ${n} firebase emulator accounts`);
+            }
+        } finally {
+            await pool.end();
+        }
+        return;
+    }
 
     if (command === 'clear-data') {
         const flags = process.argv.slice(3);

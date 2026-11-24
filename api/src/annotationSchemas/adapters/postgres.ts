@@ -15,9 +15,13 @@ interface SchemaRow {
     description: string;
     created_at: Date;
     created_by: number;
+    annotation_count: string | number;
 }
 
-const COLUMNS = 'id, name, version, kind, vector_dim, json_schema, description, created_at, created_by';
+// annotation_schema_counts is kept up to date by triggers (sql/0008.schema_counts.sql)
+const COLUMNS = `id, name, version, kind, vector_dim, json_schema, description, created_at, created_by,
+    coalesce((select c.public_annotations from annotation_schema_counts c
+              where c.schema_id = annotation_schemas.id), 0) as annotation_count`;
 
 const toSchema = (row: SchemaRow): AnnotationSchema => ({
     id: row.id as AnnotationSchemaId,
@@ -29,6 +33,7 @@ const toSchema = (row: SchemaRow): AnnotationSchema => ({
     description: row.description,
     createdAt: row.created_at,
     createdBy: row.created_by as UserId,
+    annotationCount: Number(row.annotation_count),
 });
 
 export const buildAnnotationSchemasPersistence = (pool: pg.Pool): AnnotationSchemasPersistence => {
@@ -108,7 +113,7 @@ export const buildAnnotationSchemasPersistence = (pool: pg.Pool): AnnotationSche
             if (!refs.length) return [];
             const rows = await executeQuery<SchemaRow>(
                 pool,
-                `select ${COLUMNS} from annotation_schemas s
+                `select ${COLUMNS} from annotation_schemas
                  join unnest($1::text[], $2::int[]) as r(name, version) using (name, version)`,
                 [refs.map((r) => r.name), refs.map((r) => r.version)]
             );

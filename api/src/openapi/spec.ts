@@ -279,6 +279,10 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                         json_schema: { type: ['object', 'null'] },
                         description: { type: 'string' },
                         created_at: { type: 'string', format: 'date-time' },
+                        annotation_count: {
+                            type: 'integer',
+                            description: "Public, live annotations of this schema (private ones aren't counted)",
+                        },
                         created_by: { type: 'integer' },
                         links: ref('Links'),
                     },

@@ -2,11 +2,12 @@ import { LICENSE_TYPES, type AnnotationResource, type Page, type SoundResource, 
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api, ApiError, appPath, useFeed, useResource } from '../api';
-import { AnnotationTable, ApiLink, ErrorMessage, LoadMore } from '../components';
+import { AnnotationTable, ApiLink, ErrorMessage, LicenseBadge, LoadMore } from '../components';
 import { AnnotationTimeline } from '../elements/AnnotationTimeline';
 import { AudioView, playSpan } from '../elements/AudioView';
 import { SoundTimeseries } from '../elements/TimeseriesViews';
 import { SimilarSegments, VectorLanes } from '../vectors/VectorSearch';
+import { StarButton } from '../favorites';
 import type { AudioViewElement } from '../elements/web-components';
 
 export const SoundsPage = () => {
@@ -19,14 +20,16 @@ export const SoundsPage = () => {
             <ErrorMessage error={feed.error} />
             <table>
                 <thead>
-                    <tr><th>id</th><th>title</th><th>duration</th><th>audio</th><th>by</th></tr>
+                    <tr><th /><th>id</th><th>title</th><th>duration</th><th>license</th><th>audio</th><th>by</th></tr>
                 </thead>
                 <tbody>
                     {feed.items.map((s) => (
                         <tr key={s.id}>
+                            <td><StarButton soundId={s.id} /></td>
                             <td><ApiLink href={s.links.self!}>{s.id}</ApiLink></td>
                             <td><ApiLink href={s.links.self!}>{s.title ?? <em>untitled</em>}</ApiLink></td>
                             <td>{s.duration_seconds.toFixed(2)}s</td>
+                            <td><LicenseBadge license={s.license_type} compact /></td>
                             <td className="truncate"><a href={s.audio_url}>{s.audio_url}</a></td>
                             <td><ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink></td>
                         </tr>
@@ -147,9 +150,11 @@ export const SoundPage = () => {
 
     return (
         <>
-            <h1>{s.title ?? `Sound ${s.id}`}</h1>
+            <h1>
+                <StarButton soundId={s.id} /> {s.title ?? `Sound ${s.id}`}
+            </h1>
             <p className="muted">
-                {s.duration_seconds.toFixed(2)}s · <a href={s.license_type}>license</a>
+                {s.duration_seconds.toFixed(2)}s · <LicenseBadge license={s.license_type} />
                 {s.info_url && <> · <a href={s.info_url}>info</a></>} · added by <ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink>
                 {me.data?.id === s.created_by && <> · <button className="link danger" onClick={remove}>delete</button></>}
             </p>
@@ -171,7 +176,7 @@ export const SoundPage = () => {
             <h2>Annotations</h2>
             <AddTags sound={s} onCreated={annotations.reload} />
             <ErrorMessage error={annotations.error} />
-            <AnnotationTable items={annotations.items} onSelect={play} />
+            <AnnotationTable items={annotations.items} onSelect={play} showSound={false} />
             <LoadMore hasMore={annotations.hasMore} loadMore={annotations.loadMore} />
         </>
     );

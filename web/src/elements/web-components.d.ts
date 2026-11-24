@@ -18,6 +18,8 @@ declare module 'react' {
             'annotation-timeline': CustomElementProps<HTMLElement>;
             'timeseries-view': CustomElementProps<import('./timeseries-view').TimeseriesView>;
             'vector-lane': CustomElementProps<import('./vector-lane').VectorLane>;
+            'json-view': CustomElementProps<import('./json-view').JsonView>;
+            'vector-bars': CustomElementProps<import('./vector-bars').VectorBars>;
             'scatter-3d': CustomElementProps<import('./scatter-3d').Scatter3d>;
             'codec-viewer': CustomElementProps<import('./codec-viewer').CodecViewer>;
         }

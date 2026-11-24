@@ -19,6 +19,7 @@ export const renderAnnotationSchema = (links: Links, s: AnnotationSchema): Annot
     description: s.description,
     created_at: s.createdAt.toISOString(),
     created_by: s.createdBy,
+    annotation_count: s.annotationCount,
     links: {
         self: links.href(`/annotation-schemas/${schemaRef(s)}`),
         annotations: links.href('/annotations', { schema: schemaRef(s) }),

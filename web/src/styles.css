@@ -79,3 +79,30 @@ annotation-timeline { margin-top: 4px; }
 .labs { list-style: none; padding: 0; display: grid; gap: 12px; }
 .labs h2 { margin: 0 0 4px; font-size: 1.1em; }
 .labs p { margin: 0; }
+
+/* sound titles can be long ("Composer: Composition, Movement") */
+td.sound { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lead { font-size: 1.1em; margin-top: -4px; }
+
+/* tags that search for themselves */
+a.tag { color: inherit; text-decoration: none; cursor: pointer; }
+a.tag:hover { border-color: var(--accent, #3b6fe0); color: var(--accent, #3b6fe0); }
+
+/* ☆/★ favorites */
+button.star { background: none; border: 0; padding: 0 2px; font-size: 1.1em; line-height: 1; cursor: pointer;
+              color: var(--muted); vertical-align: baseline; }
+button.star:hover { color: #c98500; }
+button.star.starred { color: #eda100; }
+button.star:disabled { cursor: default; opacity: 0.5; }
+h1 button.star { font-size: 0.9em; }
+
+/* Creative Commons license icons */
+a.license { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+a.license img { display: block; border-radius: 50%; }
+a.license span { margin-left: 4px; }
+
+/* vectors as bar charts */
+.vector { display: inline-flex; align-items: center; gap: 6px; }
+.vector-detail p { margin: 4px 0; }
+
+th.number, td.number { text-align: right; font-variant-numeric: tabular-nums; }

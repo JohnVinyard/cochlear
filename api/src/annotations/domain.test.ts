@@ -25,6 +25,7 @@ const schema = (name: string, kind: AnnotationSchema['kind'], extra: Partial<Ann
     description: '',
     createdAt: new Date(),
     createdBy: 1 as UserId,
+    annotationCount: 0,
     ...extra,
 });
 

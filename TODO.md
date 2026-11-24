@@ -44,6 +44,8 @@ The design background is in `Audio Annotations API and App.md`.
 
 ## Web app
 
+- [ ] Favorites: look at the stars and the Favorites page in a browser. Later: public favorites (just `access: "*"`) and "most starred"; favorites of other things (users, schemas) would need annotations of more than sounds
+
 - [ ] Look at the API reference (`/api-docs`) in a browser, including "Try it" with a copied sign-in token; and see whether Elements' styles need adjusting for the app's dark mode
 
 - [ ] Annotation editors for every kind. Only tags exist today; also needed: text, kv, vector and blob (with upload).
@@ -126,6 +128,8 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [x] Codec draft 0.2: `defs` and `$ref` (sounds, envelopes, patterns; instance paths plus `source` pointers; errors located in the definition), reverse-DNS extension types, `requires`; `drums.json` rewritten around patterns (172 KB → 9 KB); the viewer shows references and highlights every use of a definition
 
 - [x] User state documents (`GET`/`PUT /v1/users/me/state`, ETag/If-Match, reset by clear-data), and `client.get_state`/`put_state`
+- [x] Tests don't leave data behind: API tests run against their own database (`cochlea_test`) and API server, and delete their emulator accounts; `yarn cli remove-test-data` removed what earlier runs left (1,732 users, 797 sounds, 159 schemas, 96 vector indices, 6,765 annotations)
+- [x] Favorites ("stars"): private `favorite@1` annotations (a seeded schema, so a "favorite" tag elsewhere doesn't count); ☆/★ on sounds, segment annotations and similarity-search results; a Favorites page. No endpoints of their own
 - [x] MusicNet registers each sound's original as an `audio/wav` format, with sample rate, channels, bit depth, sample format and size read from the WAV header (all 330 done)
 - [x] Sound formats (`sound_formats`, replacing `sounds.low_quality_audio_url`): other encodings of a sound, each a URL, MIME type and free-form metadata (`docs/sound-formats.md`); embedded in sounds, `/sounds/{id}/formats`, addable by any SOUND_EDITOR, deletable by their creator; in the Python client and on the sound page. The codec's file extension and media type (`.sprs`, `audio/vnd.cochlea.sprs+json`) are in `codec/SPEC.md`
 - [x] Annotation search: `q` (full-text over tags, prose and JSON string values; a stored `search_tsv` column with a GIN index) and `prop=key:value` (exact JSON matching via the kv index) on every annotation feed; in the Python client (`q=`, `props=`) and on the web app's Annotations page

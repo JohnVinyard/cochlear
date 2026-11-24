@@ -25,6 +25,8 @@ export interface AnnotationSchema {
     description: string;
     createdAt: Date;
     createdBy: UserId;
+    /** Public, live annotations of this schema (private ones aren't counted, so as not to reveal them) */
+    annotationCount: number;
 }
 
 export interface NewAnnotationSchema {
