@@ -132,7 +132,26 @@ services:
       install:
         condition: service_completed_successfully
 
+  # one-shot: builds the codec's WebAssembly decoder into web/public/codec/
+  # (for the hidden /labs/codec page).  Rebuild with `docker compose run --rm codec`
+  # or `yarn build-codec` (needs a local Rust toolchain).
+  codec:
+    build:
+      context: .
+      dockerfile: docker/rust.Dockerfile
+    image: cochlea-rust-dev
+    working_dir: /app
+    command: sh codec/build-wasm.sh
+    environment:
+      CARGO_TARGET_DIR: /cargo-target
+    volumes:
+      - .:/app
+      - cargo_registry:/usr/local/cargo/registry
+      - cargo_target:/cargo-target
+
 volumes:
+  cargo_registry:
+  cargo_target:
   node_modules:
   api_node_modules:
   web_node_modules:

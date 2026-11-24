@@ -1,0 +1,62 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "sequencer node",
+    "description": "Plays child nodes at given times. speed scales this sequencer's timeline and every one nested in it; it changes when things play, not how they sound.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "type"
+    ],
+    "properties": {
+        "type": {
+            "const": "sequencer"
+        },
+        "label": {
+            "type": "string"
+        },
+        "meta": {
+            "type": "object"
+        },
+        "speed": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "default": 1
+        },
+        "events": {
+            "anyOf": [
+                {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                    "time_seconds",
+                                    "node"
+                                ],
+                                "properties": {
+                                    "time_seconds": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "description": "On this sequencer's timeline, i.e. before dividing by speed"
+                                    },
+                                    "node": {
+                                        "$ref": "document.schema.json#/$defs/node"
+                                    }
+                                }
+                            },
+                            {
+                                "$ref": "document.schema.json#/$defs/reference"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "$ref": "document.schema.json#/$defs/reference"
+                }
+            ]
+        }
+    }
+}

@@ -51,6 +51,7 @@ export const buildUsersPersistence = (pool: pg.Pool): UsersPersistence => {
         getById: (id) => getOne('u.id = $1', id),
         getByFirebaseUid: (uid) => getOne('u.firebase_uid = $1', uid),
         getByEmail: (email) => getOne('lower(u.email) = lower($1)', email),
+        getByUserName: (userName) => getOne('u.user_name = $1', userName),
 
         async insert(user) {
             try {

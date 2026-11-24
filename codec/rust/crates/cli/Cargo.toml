@@ -1,0 +1,17 @@
+[package]
+name = "cochlea-codec-cli"
+description = "Render cochlea codec documents to WAV files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "cochlea-codec"
+path = "src/main.rs"
+
+[dependencies]
+cochlea-codec.workspace = true
+cochlea-codec-gammatone.workspace = true
+serde_json.workspace = true
+ureq = "2"
+cochlea-codec-wasm = { path = "../wasm" }

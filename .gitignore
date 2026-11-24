@@ -60,3 +60,8 @@ crash.log
 *.swp
 .DS_Store
 Thumbs.db
+
+# --- codec ------------------------------------------------------------------
+codec/rust/target/
+# built by codec/build-wasm.sh
+web/public/codec/

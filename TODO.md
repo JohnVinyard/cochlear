@@ -7,9 +7,20 @@ The design background is in `Audio Annotations API and App.md`.
 ## Next up
 
 - [ ] First git commit of the foundation
-- [ ] `codec/` placeholder: README with the open questions (VST? Web Audio vs. Rust/WASM `AudioWorkletProcessor`?) and a draft `decoder.schema.json` derived from `web-components/components/synth.ts` (`SamplerParams`, `SequencerParams`, `MusicalEvent`, `speed`)
 - [ ] `infra/terraform/` placeholder: module stubs for Cloud Run (api), Cloud SQL (Postgres 17 + pgvector), GCS (blobs), Artifact Registry, Secret Manager. Firebase Hosting deploys through the firebase CLI.
 - [ ] Look at the web app in a browser. It typechecks and builds, and the dev server, CORS and API calls are verified, but nobody has seen it render yet.
+
+## To think about
+
+- [ ] **Content-addressable annotations.** Today identity lives in the client: `content_key` (in `clients/python/cochlea_client/client.py`) hashes schema, segment, value and `data`, and `sync_annotations` reads a sound's existing annotations and creates only the missing ones. That works, but it's racy across concurrent runs, every run costs a full read, and every client needs an identical hash. Open questions:
+  - **Scope:** unique per `(created_by, sound_id)`, or global, so two bots asserting the same fact collide?
+  - **Canonical form:** who defines it? Float handling (`4.0` vs `4`, float32 vectors), key order, tag normalisation; maybe RFC 8785 JSON canonicalisation. Shared test vectors between server and clients.
+  - **Duplicates:** respond `409` + `Location` (like sounds), or a batch option like `on_conflict: "skip"` that returns the existing annotations? What about legitimately identical annotations? `sync_annotations` treats input as a multiset today.
+  - **Addressing:** expose the key on the resource? Make it fetchable (`/annotations/by-key/{hash}`), or even the id?
+  - **Soft deletes:** does re-posting a deleted annotation give `410`, or create it again?
+  - **Access:** is it part of identity? (Not today.)
+  - **Rollout:** a migration to backfill existing rows (about 1.09M MusicNet annotations locally)
+  - **Sounds:** they're unique by `audio_url` today. Should they also be addressable by a hash of the audio content?
 
 ## API
 
@@ -42,12 +53,36 @@ The design background is in `Audio Annotations API and App.md`.
 - [ ] In web-components: make `<audio-view>` property setters reflect to attributes, so React 19 (which sets properties) works without the `AudioView.tsx` wrapper
 - [ ] Ship type declarations (`.d.ts`) from web-components, replacing `web/src/elements/web-components.d.ts`
 
+## Codec
+
+The open questions in `codec/SPEC.md` come first, especially parameter overrides on references, and extensions as WebAssembly.
+
+- [ ] Look at `/labs/codec` in a browser. The decoder, the WASM wrapper (under Node) and the dev server are verified, but nobody has heard it play or seen the viewer render yet.
+- [ ] Build the document in a Worker rather than in the AudioWorklet constructor, which blocks the audio thread while samplers precompute (convolution is the slow part)
+- [ ] Streaming voices for long sources and impulse responses (today leaf modules precompute their whole output)
+- [ ] `<codec-viewer>`: waveform of the rendered output; zoom; show which nodes are playing; edit parameters in place
+- [ ] Upstream `<codec-viewer>` to web-components. It imports its worklet through Vite (`?worker&url`), so it needs a bundler-neutral way to find it.
+- [ ] Higher-quality resampling (linear today)
+- [ ] `wasm-opt` the WebAssembly build (610 KB today)
+- [ ] An encoder: matching pursuit into timed sampler events
+- [ ] Render each definition once and share its output between uses (references make documents small, but each use is still built separately)
+- [ ] Pick the namespace for first-party extensions: `org.cochlea.*` is a placeholder for a domain we control
+- [ ] Bridge to the API: e.g. a `musicnet-note@1` → codec document transform (`codec/examples/generate.py` does this from local files)
+
+## Integrations
+
+- [ ] Should `json_schema` also validate `kv` values for kv-kind schemas? Today it validates only `data`, so `musicnet-note@1` has no schema for its fields.
+- [ ] Mark bot users as bots (e.g. `users.is_bot`), and show them that way in the web app
+- [ ] Annotation batch inserts are row-by-row inside the feed lock (`annotations/adapters/postgres.ts`). A multi-row insert (`unnest`) would speed up large ingests (currently ~3k annotations/s locally).
+- [ ] Web app: show `musicnet-note@1` as a piano roll rather than as timeline lanes
+- [ ] More datasets
+
 ## Python client
 
 - [ ] Tests (pytest against the compose stack)
 - [ ] Retries/backoff
 - [ ] Verify the conjure-backed cache (`cochlea_client/cache.py`), which hasn't been run
-- [ ] Example bots: MusicNet ingestion, librosa features (chroma, mfcc, ...)
+- [ ] Example feature bots: librosa features (chroma, mfcc, ...)
 
 ## Dev experience / CI
 
@@ -56,6 +91,13 @@ The design background is in `Audio Annotations API and App.md`.
 - [ ] Lint config (eslint)
 
 ## Done
+
+- [x] Codec draft 0.1: `codec/SPEC.md`, JSON schemas, examples; Rust decoder (sampler with slice/envelope/band-pass/convolution, sequencer with compounding speed, `data:`/WAV decoding), `gammatone` extension, C-ABI WebAssembly build, CLI; browser AudioWorklet host; `<codec-viewer>` (max depth, timeline, play any node in context) at the hidden `/labs/codec`; `codec` compose service
+- [x] Codec draft 0.2: `defs` and `$ref` (sounds, envelopes, patterns; instance paths plus `source` pointers; errors located in the definition), reverse-DNS extension types, `requires`; `drums.json` rewritten around patterns (172 KB → 9 KB); the viewer shows references and highlights every use of a definition
+
+- [x] MusicNet integration (`integrations/musicnet`): sounds, metadata, tags and note labels. Idempotent, and runs as the `musicnet` bot.
+- [x] `yarn cli create-bot` (bot users that authenticate only with API keys)
+- [x] Python client: `content_key`, `ensure_schema`, `sync_annotations` (re-runnable ingestion), and pytest unit tests
 
 - [x] `yarn dev` / `dev:detached` / `dev:logs` / `dev:stop`
 - [x] Firebase emulator accounts persist across restarts (exported to `.data/firebase/export`)
@@ -71,7 +113,7 @@ The design background is in `Audio Annotations API and App.md`.
 - [x] Hand-written OpenAPI 3.1 spec, sharing JSON schemas with ajv validation (`GET /v1/openapi.json`)
 - [x] Clean-architecture rules enforced by dependency-cruiser (`yarn arch-test`)
 - [x] Unit tests (domain) and full-stack API tests (against compose)
-- [x] CLI: `grant-role`, `revoke-role`, `dev-token`
+- [x] CLI: `grant-role`, `revoke-role`, `dev-token`, `clear-data [--keep-ids]` (local databases only)
 - [x] Vector schemas capped at 2000 dimensions so every one is indexable (migration 0003)
 - [x] Web app CRUD shell: sign-in, sounds (with `<audio-view>` and `<annotation-timeline>`), annotations, schemas, profile, API keys
 - [x] Python client skeleton (feeds with `follow`, idempotent `create_sound`, batch annotations, blob upload)

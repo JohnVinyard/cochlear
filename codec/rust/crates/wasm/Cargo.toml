@@ -1,0 +1,14 @@
+[package]
+name = "cochlea-codec-wasm"
+description = "WebAssembly build of the cochlea codec decoder, with a plain C ABI (no wasm-bindgen) so it runs in an AudioWorklet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cochlea-codec.workspace = true
+cochlea-codec-gammatone.workspace = true
+serde_json.workspace = true

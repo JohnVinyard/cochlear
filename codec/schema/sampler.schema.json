@@ -1,0 +1,160 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "sampler node",
+    "description": "Plays (part of) a sound from a URI. Processing order: slice, envelope, filter, gain, convolve.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "type",
+        "url"
+    ],
+    "properties": {
+        "type": {
+            "const": "sampler"
+        },
+        "label": {
+            "type": "string"
+        },
+        "meta": {
+            "type": "object"
+        },
+        "url": {
+            "anyOf": [
+                {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A data: URI, an http(s) URL, or a reference relative to the document"
+                },
+                {
+                    "$ref": "document.schema.json#/$defs/reference"
+                }
+            ]
+        },
+        "start_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Where in the sound to start"
+        },
+        "duration_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How much of it to play; default: to the end"
+        },
+        "gain": {
+            "type": "number",
+            "default": 1
+        },
+        "envelope": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "points"
+                    ],
+                    "properties": {
+                        "type": {
+                            "enum": [
+                                "linear",
+                                "exponential"
+                            ],
+                            "default": "linear"
+                        },
+                        "points": {
+                            "type": "array",
+                            "minItems": 1,
+                            "description": "In time order. Times are relative to the start of the slice; the gain holds before the first point and after the last.",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                    "time_seconds",
+                                    "gain"
+                                ],
+                                "properties": {
+                                    "time_seconds": {
+                                        "type": "number",
+                                        "minimum": 0
+                                    },
+                                    "gain": {
+                                        "type": "number"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "$ref": "document.schema.json#/$defs/reference"
+                }
+            ]
+        },
+        "filter": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "center_frequency",
+                        "bandwidth"
+                    ],
+                    "properties": {
+                        "type": {
+                            "const": "bandpass",
+                            "default": "bandpass"
+                        },
+                        "center_frequency": {
+                            "type": "number",
+                            "exclusiveMinimum": 0,
+                            "description": "Hz"
+                        },
+                        "bandwidth": {
+                            "type": "number",
+                            "exclusiveMinimum": 0,
+                            "description": "Hz"
+                        }
+                    }
+                },
+                {
+                    "$ref": "document.schema.json#/$defs/reference"
+                }
+            ]
+        },
+        "convolve": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "url",
+                        "mix"
+                    ],
+                    "properties": {
+                        "url": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "An impulse response, e.g. a room; normalised to unit energy"
+                                },
+                                {
+                                    "$ref": "document.schema.json#/$defs/reference"
+                                }
+                            ]
+                        },
+                        "mix": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "description": "0: all dry, 1: all wet"
+                        }
+                    }
+                },
+                {
+                    "$ref": "document.schema.json#/$defs/reference"
+                }
+            ]
+        }
+    }
+}

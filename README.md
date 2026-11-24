@@ -13,6 +13,8 @@ What's done and what's next is in [`TODO.md`](TODO.md).
 | `web/` | Vite + React web app |
 | `shared/` | Types and constants shared by `api` and `web` |
 | `clients/python/` | Python client |
+| `codec/` | An experimental JSON audio codec: spec, schemas, a Rust/WebAssembly decoder (see [`codec/README.md`](codec/README.md)) |
+| `integrations/` | Dataset ingestion scripts (e.g. MusicNet), each run as its own bot user |
 | `firebase/` | Firebase auth emulator image |
 | `docker/` | Development image |
 
@@ -41,12 +43,15 @@ These are thin wrappers around `docker compose`, which you can also use directly
 | firebase emulator UI | http://localhost:4000 |
 | postgres | `localhost:5432` (user, password and database are all `cochlea`) |
 | fake GCS | http://localhost:4443 |
+| codec lab (hidden) | http://localhost:5173/labs/codec |
 
 Host ports can be overridden in `.env` (see `.env.example`). Data persists in
 `.data/`; delete that directory to start fresh.
 
 The API and the web app hot-reload. Changes to `shared/` need
-`docker compose restart api`.
+`docker compose restart api`. The `codec` service builds the codec's
+WebAssembly decoder once at startup. After changing Rust code, run
+`docker compose run --rm codec` (or `yarn build-codec`) and reload the page.
 
 ### Talking to the API
 
@@ -70,6 +75,32 @@ docker compose exec api yarn -s cli grant-role you@example.com ANNOTATION_SCHEMA
 docker compose exec api yarn -s cli revoke-role you@example.com SOUND_EDITOR
 ```
 
+### Bot users
+
+Integrations and feature bots run as their own users, which sign in only
+with API keys. This creates (or updates) one and prints a new key for it:
+
+```bash
+docker compose exec -T api yarn -s cli create-bot musicnet --about "Imports MusicNet"
+```
+
+### Clearing data
+
+```bash
+docker compose exec api yarn -s cli clear-data             # ids restart at 1
+docker compose exec api yarn -s cli clear-data --keep-ids  # ids continue
+```
+
+This hard-deletes every sound and annotation, including soft-deleted ones.
+Users, API keys, schemas and uploaded blobs are kept. Use `--keep-ids` when a
+client (a bot, say) remembers its feed position (`low_id`). Otherwise it
+would skip new items until their ids pass its cursor. The command refuses to
+run unless `PGHOST` is `localhost`, `127.0.0.1`, `::1` or `postgres`.
+
+To wipe everything, including users and emulator accounts, run
+`yarn dev:stop && sudo rm -rf .data && yarn dev`. You need `sudo` because the
+postgres data directory belongs to the container's user.
+
 ### Database changes
 
 Add a new `api/sql/NNNN.description.sql`, then run
@@ -85,6 +116,8 @@ yarn test-unit       # domain unit tests
 yarn test-api        # full-stack API tests; requires `docker compose up`
 yarn arch-test       # clean-architecture dependency rules
 yarn ready           # all of the above
+.venv/bin/pytest clients/python/tests integrations   # python client and integrations
+yarn test-codec      # codec: cargo test, and the examples against the JSON schemas (needs Rust)
 ```
 
 The API tests never start the stack themselves. They sign up fresh emulator

@@ -16,6 +16,7 @@ declare module 'react' {
         interface IntrinsicElements {
             'audio-view': CustomElementProps<AudioViewElement>;
             'annotation-timeline': CustomElementProps<HTMLElement>;
+            'codec-viewer': CustomElementProps<import('./codec-viewer').CodecViewer>;
         }
     }
 }

@@ -1,0 +1,414 @@
+{
+  "$schema": "../schema/document.schema.json",
+  "format": "cochlea-codec",
+  "version": "0.2",
+  "requires": {
+    "org.cochlea.gammatone": "0.1"
+  },
+  "meta": {
+    "description": "The gammatone extension, in nested sequencers at different speeds"
+  },
+  "root": {
+    "type": "sequencer",
+    "label": "arpeggios",
+    "events": [
+      {
+        "time_seconds": 0,
+        "node": {
+          "type": "sequencer",
+          "label": "speed 1",
+          "speed": 1,
+          "events": [
+            {
+              "time_seconds": 0.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.75,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 2,
+        "node": {
+          "type": "sequencer",
+          "label": "speed 1.5",
+          "speed": 1.5,
+          "events": [
+            {
+              "time_seconds": 0.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.75,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 4,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 3.5,
+        "node": {
+          "type": "sequencer",
+          "label": "speed 2",
+          "speed": 2,
+          "events": [
+            {
+              "time_seconds": 0.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 2,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 2,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 2,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.75,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "order": 2,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 2,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 2,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 2,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 4.5,
+        "node": {
+          "type": "sequencer",
+          "label": "speed 3",
+          "speed": 3,
+          "events": [
+            {
+              "time_seconds": 0.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 6,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 6,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 6,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 0.75,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "order": 6,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "order": 6,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.25,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "order": 6,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            },
+            {
+              "time_seconds": 1.5,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "order": 6,
+                "bandwidth": 12,
+                "duration_seconds": 0.8,
+                "gain": 0.4
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 5.4,
+        "node": {
+          "type": "sequencer",
+          "label": "chord, in the church",
+          "events": [
+            {
+              "time_seconds": 0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 3,
+                "duration_seconds": 3,
+                "gain": 0.25
+              }
+            },
+            {
+              "time_seconds": 0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 3,
+                "duration_seconds": 3,
+                "gain": 0.25
+              }
+            },
+            {
+              "time_seconds": 0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 3,
+                "duration_seconds": 3,
+                "gain": 0.25
+              }
+            },
+            {
+              "time_seconds": 0,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 3,
+                "duration_seconds": 3,
+                "gain": 0.25
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

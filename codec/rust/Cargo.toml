@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = ["crates/codec", "crates/gammatone", "crates/wasm", "crates/cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+cochlea-codec = { path = "crates/codec" }
+cochlea-codec-gammatone = { path = "crates/gammatone" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"

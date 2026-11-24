@@ -1,0 +1,342 @@
+{
+  "$schema": "../schema/document.schema.json",
+  "format": "cochlea-codec",
+  "version": "0.2",
+  "meta": {
+    "description": "Fours all the way down: a song of 4 phrases, a phrase of 4 bars, a bar of 4 beats, a beat of a few hits. Each sound and pattern is defined once, in defs, and used with $ref. Kick and snare come from URLs, the hi-hat from a data: URI; envelope, band-pass and room reverb; the fills are bars at double time, via a nested sequencer's speed. Try <codec-viewer>'s max-depth from 0 to 4."
+  },
+  "defs": {
+    "hat-sample": "data:audio/wav;base64,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",
+    "hat-filter": {
+      "type": "bandpass",
+      "center_frequency": 9000,
+      "bandwidth": 6000
+    },
+    "kick": {
+      "type": "sampler",
+      "label": "kick",
+      "url": "https://one-laptop-per-child.s3.amazonaws.com/tamtam44old/drum1kick.wav",
+      "gain": 0.9
+    },
+    "snare": {
+      "type": "sampler",
+      "label": "snare",
+      "url": "https://one-laptop-per-child.s3.amazonaws.com/tamtam44old/drum1snare.wav",
+      "gain": 0.7,
+      "envelope": {
+        "type": "exponential",
+        "points": [
+          {
+            "time_seconds": 0,
+            "gain": 1
+          },
+          {
+            "time_seconds": 0.35,
+            "gain": 0.001
+          }
+        ]
+      },
+      "convolve": {
+        "url": "https://matching-pursuit-reverbs.s3.amazonaws.com/Nice+Drum+Room.wav",
+        "mix": 0.35
+      }
+    },
+    "hat": {
+      "type": "sampler",
+      "label": "hat",
+      "url": {
+        "$ref": "#/defs/hat-sample"
+      },
+      "gain": 0.5,
+      "filter": {
+        "$ref": "#/defs/hat-filter"
+      }
+    },
+    "hat-soft": {
+      "type": "sampler",
+      "label": "hat (soft)",
+      "url": {
+        "$ref": "#/defs/hat-sample"
+      },
+      "gain": 0.25,
+      "filter": {
+        "$ref": "#/defs/hat-filter"
+      }
+    },
+    "downbeat": {
+      "type": "sequencer",
+      "label": "beat: kick",
+      "events": [
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/kick"
+          }
+        },
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/hat"
+          }
+        },
+        {
+          "time_seconds": 0.25,
+          "node": {
+            "$ref": "#/defs/hat-soft"
+          }
+        }
+      ]
+    },
+    "backbeat": {
+      "type": "sequencer",
+      "label": "beat: kick + snare",
+      "events": [
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/kick"
+          }
+        },
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/snare"
+          }
+        },
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/hat"
+          }
+        },
+        {
+          "time_seconds": 0.25,
+          "node": {
+            "$ref": "#/defs/hat-soft"
+          }
+        }
+      ]
+    },
+    "pickup": {
+      "type": "sequencer",
+      "label": "beat: kick + snare, pickup",
+      "events": [
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/kick"
+          }
+        },
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/snare"
+          }
+        },
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/hat"
+          }
+        },
+        {
+          "time_seconds": 0.25,
+          "node": {
+            "$ref": "#/defs/snare"
+          }
+        }
+      ]
+    },
+    "bar": {
+      "type": "sequencer",
+      "label": "bar",
+      "events": [
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/downbeat",
+            "label": "beat 1"
+          }
+        },
+        {
+          "time_seconds": 0.5,
+          "node": {
+            "$ref": "#/defs/backbeat",
+            "label": "beat 2"
+          }
+        },
+        {
+          "time_seconds": 1.0,
+          "node": {
+            "$ref": "#/defs/downbeat",
+            "label": "beat 3"
+          }
+        },
+        {
+          "time_seconds": 1.5,
+          "node": {
+            "$ref": "#/defs/backbeat",
+            "label": "beat 4"
+          }
+        }
+      ]
+    },
+    "bar-pickup": {
+      "type": "sequencer",
+      "label": "bar",
+      "events": [
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/downbeat",
+            "label": "beat 1"
+          }
+        },
+        {
+          "time_seconds": 0.5,
+          "node": {
+            "$ref": "#/defs/backbeat",
+            "label": "beat 2"
+          }
+        },
+        {
+          "time_seconds": 1.0,
+          "node": {
+            "$ref": "#/defs/downbeat",
+            "label": "beat 3"
+          }
+        },
+        {
+          "time_seconds": 1.5,
+          "node": {
+            "$ref": "#/defs/pickup",
+            "label": "beat 4"
+          }
+        }
+      ]
+    },
+    "fill": {
+      "type": "sequencer",
+      "label": "fill (double time)",
+      "speed": 2,
+      "events": [
+        {
+          "time_seconds": 0,
+          "node": {
+            "$ref": "#/defs/bar",
+            "label": "bar 1"
+          }
+        },
+        {
+          "time_seconds": 2.0,
+          "node": {
+            "$ref": "#/defs/bar-pickup",
+            "label": "bar 2"
+          }
+        }
+      ]
+    },
+    "phrase": {
+      "type": "sequencer",
+      "label": "phrase",
+      "events": [
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/bar",
+            "label": "bar 1"
+          }
+        },
+        {
+          "time_seconds": 2.0,
+          "node": {
+            "$ref": "#/defs/bar",
+            "label": "bar 2"
+          }
+        },
+        {
+          "time_seconds": 4.0,
+          "node": {
+            "$ref": "#/defs/bar",
+            "label": "bar 3"
+          }
+        },
+        {
+          "time_seconds": 6.0,
+          "node": {
+            "$ref": "#/defs/bar-pickup",
+            "label": "bar 4"
+          }
+        }
+      ]
+    },
+    "phrase-fill": {
+      "type": "sequencer",
+      "label": "phrase",
+      "events": [
+        {
+          "time_seconds": 0.0,
+          "node": {
+            "$ref": "#/defs/bar",
+            "label": "bar 1"
+          }
+        },
+        {
+          "time_seconds": 2.0,
+          "node": {
+            "$ref": "#/defs/bar",
+            "label": "bar 2"
+          }
+        },
+        {
+          "time_seconds": 4.0,
+          "node": {
+            "$ref": "#/defs/bar",
+            "label": "bar 3"
+          }
+        },
+        {
+          "time_seconds": 6.0,
+          "node": {
+            "$ref": "#/defs/fill",
+            "label": "bar 4"
+          }
+        }
+      ]
+    }
+  },
+  "root": {
+    "type": "sequencer",
+    "label": "song",
+    "events": [
+      {
+        "time_seconds": 0.0,
+        "node": {
+          "$ref": "#/defs/phrase",
+          "label": "phrase 1"
+        }
+      },
+      {
+        "time_seconds": 8.0,
+        "node": {
+          "$ref": "#/defs/phrase-fill",
+          "label": "phrase 2"
+        }
+      },
+      {
+        "time_seconds": 16.0,
+        "node": {
+          "$ref": "#/defs/phrase",
+          "label": "phrase 3"
+        }
+      },
+      {
+        "time_seconds": 24.0,
+        "node": {
+          "$ref": "#/defs/phrase-fill",
+          "label": "phrase 4"
+        }
+      }
+    ]
+  }
+}

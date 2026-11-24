@@ -1,0 +1,13 @@
+[package]
+name = "cochlea-codec-gammatone"
+description = "A gammatone generator: an example cochlea codec extension"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cochlea-codec.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

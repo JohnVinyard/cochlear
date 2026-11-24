@@ -1,0 +1,54 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "org.cochlea.gammatone node (extension)",
+    "description": "The impulse response of a gammatone filter: t^(n-1) e^(-2πbt) cos(2πft + φ), scaled so its peak is gain",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "type",
+        "center_frequency"
+    ],
+    "properties": {
+        "type": {
+            "const": "org.cochlea.gammatone"
+        },
+        "label": {
+            "type": "string"
+        },
+        "meta": {
+            "type": "object"
+        },
+        "center_frequency": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Hz"
+        },
+        "bandwidth": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Hz; default 1.019 × ERB(center_frequency)"
+        },
+        "order": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 4
+        },
+        "phase": {
+            "type": "number",
+            "default": 0,
+            "description": "Radians"
+        },
+        "gain": {
+            "type": "number",
+            "default": 1,
+            "description": "Peak amplitude"
+        },
+        "duration_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Default: until it has decayed by 60 dB"
+        }
+    }
+}

@@ -19,7 +19,8 @@ export interface User {
 }
 
 export interface NewUser {
-    firebaseUid: string;
+    /** null for users that never sign in interactively (bots, the system user) */
+    firebaseUid: string | null;
     userName: string;
     email: string | null;
     roles: readonly Role[];
@@ -37,6 +38,14 @@ export class UserNameTaken extends InvalidRequest {
     }
 }
 
+/** A user that only ever authenticates with API keys, e.g. a dataset integration */
+export interface BotUserModel {
+    userName: string;
+    aboutMe?: string;
+    infoUrl?: string | null;
+    roles: readonly Role[];
+}
+
 export const USER_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
 
 // ---------------------------------------------------------------------------
@@ -47,6 +56,7 @@ export interface UsersPersistence {
     getById(id: UserId): Promise<User | null>;
     getByFirebaseUid(uid: string): Promise<User | null>;
     getByEmail(email: string): Promise<User | null>;
+    getByUserName(userName: string): Promise<User | null>;
     /** Throws `UserNameTaken` if the name is in use */
     insert(user: NewUser): Promise<User>;
     /** Throws `UserNameTaken` if the name is in use */
@@ -77,6 +87,12 @@ export interface UsersDomain {
     /** Administrative (CLI-only) operations */
     grantRole(email: string, role: Role): Promise<User>;
     revokeRole(email: string, role: Role): Promise<User>;
+    /**
+     * Creates a bot user, or brings an existing one up to date (adding any
+     * missing roles; existing roles are never removed). Refuses to touch a
+     * user that signs in with firebase.
+     */
+    ensureBotUser(model: BotUserModel): Promise<User>;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +197,34 @@ export const buildUsersDomain = (
         async revokeRole(email, role) {
             const user = await mustGetByEmail(email);
             await persistence.revokeRole(user.id, role);
+            return mustGet(user.id);
+        },
+
+        async ensureBotUser(model) {
+            if (!USER_NAME_PATTERN.test(model.userName)) {
+                throw new InvalidRequest([
+                    'user_name must be 1-64 characters of letters, digits, "_", "." or "-"',
+                ]);
+            }
+            const existing = await persistence.getByUserName(model.userName);
+            if (existing?.firebaseUid) {
+                throw new InvalidRequest([`${model.userName} signs in with firebase; it isn't a bot`]);
+            }
+            const user =
+                existing ??
+                (await persistence.insert({
+                    firebaseUid: null,
+                    userName: model.userName,
+                    email: null,
+                    roles: model.roles,
+                }));
+            for (const role of model.roles.filter((r) => !user.roles.includes(r))) {
+                await persistence.grantRole(user.id, role);
+            }
+            const update: UserUpdate = {};
+            if (model.aboutMe !== undefined) update.aboutMe = model.aboutMe;
+            if (model.infoUrl !== undefined) update.infoUrl = model.infoUrl;
+            await persistence.update(user.id, update);
             return mustGet(user.id);
         },
     };

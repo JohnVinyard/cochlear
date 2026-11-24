@@ -55,6 +55,12 @@ export interface ApiKeysDomain {
     listApiKeys(actor: Principal): Promise<ApiKey[]>;
     deleteApiKey(actor: Principal, id: ApiKeyId): Promise<void>;
     authenticateApiKey(secret: string): Promise<Principal>;
+    /**
+     * Administrative (CLI-only): issues a key for a user without an
+     * interactive session, e.g. a bot. The same rules apply: only grantable
+     * roles that the owner holds.
+     */
+    issueApiKey(owner: { id: UserId; roles: readonly Role[] }, model: CreateApiKeyModel): Promise<CreatedApiKey>;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,38 +86,50 @@ export const buildApiKeysDomain = (
         requireRole(actor, 'API_KEY_CREATOR');
     };
 
+    const issue = async (
+        userId: UserId,
+        heldRoles: ReadonlySet<Role>,
+        model: CreateApiKeyModel
+    ): Promise<CreatedApiKey> => {
+        const name = model.name.trim();
+        const errors: string[] = [];
+        if (!name || name.length > 255) {
+            errors.push('name must be between 1 and 255 characters');
+        }
+        const roles = [...new Set(model.roles)];
+        const ungrantable = roles.filter((r) => !API_KEY_GRANTABLE_ROLES.includes(r));
+        if (ungrantable.length) {
+            errors.push(`roles may never be granted to an API key: ${ungrantable.join(', ')}`);
+        }
+        const notHeld = roles.filter((r) => !heldRoles.has(r) && !ungrantable.includes(r));
+        if (notHeld.length) {
+            errors.push(`you may only grant roles you hold yourself: ${notHeld.join(', ')}`);
+        }
+        if (!roles.length) {
+            errors.push('at least one role is required');
+        }
+        if (errors.length) throw new InvalidRequest(errors);
+
+        const secret = generateSecret();
+        const key = await persistence.insert({
+            userId,
+            name,
+            prefix: secret.slice(0, API_KEY_DISPLAY_PREFIX_LENGTH),
+            roles,
+            createdAt: now(),
+            hash: hashApiKeySecret(secret),
+        });
+        return { ...key, secret };
+    };
+
     return {
         async createApiKey(actor, model) {
             requireKeyManager(actor, 'creating API keys');
-            const name = model.name.trim();
-            const errors: string[] = [];
-            if (!name || name.length > 255) {
-                errors.push('name must be between 1 and 255 characters');
-            }
-            const roles = [...new Set(model.roles)];
-            const ungrantable = roles.filter((r) => !API_KEY_GRANTABLE_ROLES.includes(r));
-            if (ungrantable.length) {
-                errors.push(`roles may never be granted to an API key: ${ungrantable.join(', ')}`);
-            }
-            const notHeld = roles.filter((r) => !actor.roles.has(r) && !ungrantable.includes(r));
-            if (notHeld.length) {
-                errors.push(`you may only grant roles you hold yourself: ${notHeld.join(', ')}`);
-            }
-            if (!roles.length) {
-                errors.push('at least one role is required');
-            }
-            if (errors.length) throw new InvalidRequest(errors);
+            return issue(actor.user.id, actor.roles, model);
+        },
 
-            const secret = generateSecret();
-            const key = await persistence.insert({
-                userId: actor.user.id,
-                name,
-                prefix: secret.slice(0, API_KEY_DISPLAY_PREFIX_LENGTH),
-                roles,
-                createdAt: now(),
-                hash: hashApiKeySecret(secret),
-            });
-            return { ...key, secret };
+        async issueApiKey(owner, model) {
+            return issue(owner.id, new Set(owner.roles), model);
         },
 
         async listApiKeys(actor) {

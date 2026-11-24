@@ -4,21 +4,39 @@
  *   yarn cli grant-role <email> <ROLE>
  *   yarn cli revoke-role <email> <ROLE>
  *   yarn cli dev-token <email>          (firebase emulator only)
+ *   yarn cli clear-data [--keep-ids]    (local databases only)
+ *   yarn cli create-bot <user_name> [--about TEXT] [--info-url URL]
  *
  * Inside docker compose:  docker compose exec api yarn cli ...
  */
-import { isRole, ROLES } from '@cochlea/shared';
+import { parseArgs } from 'node:util';
+import { isRole, type Role, ROLES } from '@cochlea/shared';
+import { buildApiKeys } from './apiKeys';
+import { assertLocalDatabase, clearSoundsAndAnnotations } from './devtools/clearData';
 import { emulatorSignIn } from './devtools/firebaseEmulator';
-import { createPool } from './shared/db/pool';
+import { createPool, dbConfigFromEnv } from './shared/db/pool';
 import { buildUsers } from './users';
 
-const usage = () => {
+/** Bots ingest data: they can read everything and create sounds, schemas and annotations */
+const BOT_ROLES: Role[] = [
+    'SOUND_READER',
+    'ANNOTATION_READER',
+    'ANNOTATION_SCHEMA_READER',
+    'SOUND_EDITOR',
+    'ANNOTATION_EDITOR',
+    'ANNOTATION_SCHEMA_CREATOR',
+];
+
+const usage = (): never => {
     console.error(
         [
             'usage:',
             '  yarn cli grant-role <email> <ROLE>',
             '  yarn cli revoke-role <email> <ROLE>',
             '  yarn cli dev-token <email>',
+            '  yarn cli clear-data [--keep-ids]   delete all sounds and annotations (local databases only)',
+            '  yarn cli create-bot <user_name> [--about TEXT] [--info-url URL]',
+            '                                     create or update a bot user and print a new API key for it',
             '',
             `roles: ${ROLES.join(', ')}`,
         ].join('\n')
@@ -28,6 +46,62 @@ const usage = () => {
 
 const main = async () => {
     const [command, email, role] = process.argv.slice(2);
+
+    if (command === 'clear-data') {
+        const flags = process.argv.slice(3);
+        const unknown = flags.filter((f) => f !== '--keep-ids');
+        if (unknown.length) usage();
+        const db = dbConfigFromEnv();
+        assertLocalDatabase(db.host);
+        const pool = createPool(db);
+        try {
+            const keepIds = flags.includes('--keep-ids');
+            const { sounds, annotations } = await clearSoundsAndAnnotations(pool, { keepIds });
+            console.log(
+                `deleted ${sounds} sounds and ${annotations} annotations` +
+                    (keepIds ? ' (ids continue from where they were)' : ' (ids restart at 1)')
+            );
+        } finally {
+            await pool.end();
+        }
+        return;
+    }
+
+    if (command === 'create-bot') {
+        let parsed;
+        try {
+            parsed = parseArgs({
+                args: process.argv.slice(3),
+                allowPositionals: true,
+                options: { about: { type: 'string' }, 'info-url': { type: 'string' } },
+            });
+        } catch {
+            return usage();
+        }
+        const [userName, ...rest] = parsed.positionals;
+        if (!userName || rest.length) usage();
+        const pool = createPool();
+        try {
+            const bot = await buildUsers(pool).ensureBotUser({
+                userName: userName!,
+                aboutMe: parsed.values.about,
+                infoUrl: parsed.values['info-url'],
+                roles: BOT_ROLES,
+            });
+            const key = await buildApiKeys(pool).issueApiKey(bot, {
+                name: `${userName} (cli, ${new Date().toISOString().slice(0, 10)})`,
+                roles: BOT_ROLES,
+            });
+            // the secret alone goes to stdout, so `KEY=$(yarn -s cli create-bot ...)` works
+            console.error(`bot ${bot.userName} (id ${bot.id}): ${bot.roles.join(', ')}`);
+            console.error(`new API key ${key.prefix}... (id ${key.id}); it won't be shown again`);
+            console.log(key.secret);
+        } finally {
+            await pool.end();
+        }
+        return;
+    }
+
     if (!command || !email) usage();
 
     if (command === 'dev-token') {

@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from 'react-router';
 import { AuthProvider, logOut, useAuth } from './auth';
 import { AnnotationPage, AnnotationsPage } from './pages/Annotations';
+import { CodecLab } from './pages/CodecLab';
 import { LoginPage } from './pages/Login';
 import { SchemaPage, SchemasPage } from './pages/Schemas';
 import { SoundPage, SoundsPage } from './pages/Sounds';
@@ -14,6 +15,8 @@ export const App = () => (
     <AuthProvider>
         <BrowserRouter>
             <Routes>
+                {/* hidden: not in the nav, and no sign-in needed */}
+                <Route path="labs/codec" element={<CodecLab />} />
                 <Route element={<Layout />}>
                     <Route index element={<Navigate to="/sounds" replace />} />
                     <Route path="sounds" element={<SoundsPage />} />

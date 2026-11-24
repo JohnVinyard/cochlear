@@ -1,0 +1,11 @@
+[package]
+name = "cochlea-codec"
+description = "Decoder for the cochlea JSON audio codec: a sampler, a sequencer, and a registry for extensions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+rustfft = "6"

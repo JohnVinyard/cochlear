@@ -1,0 +1,2283 @@
+{
+  "$schema": "../schema/document.schema.json",
+  "format": "cochlea-codec",
+  "version": "0.2",
+  "requires": {
+    "org.cochlea.gammatone": "0.1"
+  },
+  "meta": {
+    "description": "The first 30s of MusicNet 1727's note labels, played as gammatones, one sequencer per instrument",
+    "source": "https://music-net.s3.us-east-1.amazonaws.com/1727"
+  },
+  "root": {
+    "type": "sequencer",
+    "label": "Schubert: Piano Quintet in A major, 2. Andante",
+    "events": [
+      {
+        "time_seconds": 0,
+        "node": {
+          "type": "sequencer",
+          "label": "Piano",
+          "events": [
+            {
+              "time_seconds": 0.208209,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.9112,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 0.208209,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.9112,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 1.415646,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.0505,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 1.415646,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.0505,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 2.715964,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 587.33,
+                "bandwidth": 2.027,
+                "duration_seconds": 0.9882,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 2.715964,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 293.665,
+                "bandwidth": 2.027,
+                "duration_seconds": 0.9882,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.308073,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 659.255,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.308073,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.911791,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.911791,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.981451,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 11.484,
+                "duration_seconds": 0.2567,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.981451,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 11.484,
+                "duration_seconds": 0.2567,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.085941,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.085941,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.155601,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 11.484,
+                "duration_seconds": 0.2567,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.155601,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 11.484,
+                "duration_seconds": 0.2567,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.260091,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.260091,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.3878,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.3878,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.45746,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.45746,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.52712,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 20.672,
+                "duration_seconds": 0.1871,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.52712,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 20.672,
+                "duration_seconds": 0.1871,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.58517,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 20.672,
+                "duration_seconds": 0.1871,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.58517,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 20.672,
+                "duration_seconds": 0.1871,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.64322,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 14.77,
+                "duration_seconds": 0.2219,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.64322,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 14.77,
+                "duration_seconds": 0.2219,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.724467,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 17.221,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.724467,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 17.221,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.79415,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 20.672,
+                "duration_seconds": 0.1871,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.79415,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 20.672,
+                "duration_seconds": 0.1871,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.8522,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 659.255,
+                "bandwidth": 10.336,
+                "duration_seconds": 0.2741,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.8522,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 10.336,
+                "duration_seconds": 0.2741,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.968299,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.968299,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 5.096009,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.8516,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 5.096009,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.8516,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 6.930385,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 415.305,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 6.930385,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 830.609,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 7.580544,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 2.72,
+                "duration_seconds": 0.7618,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 7.580544,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 2.72,
+                "duration_seconds": 0.7618,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.021723,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1396.913,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.021723,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.161043,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 3.04,
+                "duration_seconds": 0.6921,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.161043,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1396.913,
+                "bandwidth": 3.04,
+                "duration_seconds": 0.6921,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.555782,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 5.441,
+                "duration_seconds": 0.4309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.555782,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 5.441,
+                "duration_seconds": 0.4309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.776349,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 466.164,
+                "bandwidth": 2.65,
+                "duration_seconds": 0.7792,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.776349,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 932.328,
+                "bandwidth": 2.65,
+                "duration_seconds": 0.7792,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 9.229161,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 587.33,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 9.229161,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1174.659,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 9.368481,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 587.33,
+                "bandwidth": 2.72,
+                "duration_seconds": 0.7618,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 9.368481,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1174.659,
+                "bandwidth": 2.72,
+                "duration_seconds": 0.7618,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 9.80966,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 415.305,
+                "bandwidth": 3.975,
+                "duration_seconds": 0.5528,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 9.80966,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 830.609,
+                "bandwidth": 3.975,
+                "duration_seconds": 0.5528,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.111519,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 2.349,
+                "duration_seconds": 0.8663,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.111519,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 2.349,
+                "duration_seconds": 0.8663,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.622358,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.622358,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.761678,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 2.953,
+                "duration_seconds": 0.7095,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.761678,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 2.953,
+                "duration_seconds": 0.7095,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.168027,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.168027,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.307347,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.6151,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.307347,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.6151,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 12.317415,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 466.164,
+                "bandwidth": 7.383,
+                "duration_seconds": 0.3438,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 12.317415,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 932.328,
+                "bandwidth": 7.383,
+                "duration_seconds": 0.3438,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 12.479955,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 12.479955,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 12.607664,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 1.813,
+                "duration_seconds": 1.0927,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 12.607664,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 1.813,
+                "duration_seconds": 1.0927,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 13.269433,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 659.255,
+                "bandwidth": 3.975,
+                "duration_seconds": 0.5528,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 13.571293,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 3.975,
+                "duration_seconds": 0.5528,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 13.873152,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 554.365,
+                "bandwidth": 3.564,
+                "duration_seconds": 0.605,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 14.209841,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 3.828,
+                "duration_seconds": 0.5702,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 14.523311,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 493.883,
+                "bandwidth": 3.445,
+                "duration_seconds": 0.6224,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 14.87161,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 466.164,
+                "bandwidth": 3.564,
+                "duration_seconds": 0.605,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 15.208299,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.8763,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.900272,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.0853,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.900272,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.0853,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.22381,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 1.5,
+                "duration_seconds": 3.792,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.22381,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 1.5,
+                "duration_seconds": 3.792,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.685125,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.737,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.685125,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.737,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.776463,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1396.913,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.4758,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.776463,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.4758,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.693651,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1174.659,
+                "bandwidth": 4.307,
+                "duration_seconds": 0.518,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.693651,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 587.33,
+                "bandwidth": 4.307,
+                "duration_seconds": 0.518,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.97229,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 1.95,
+                "duration_seconds": 1.023,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.97229,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 523.251,
+                "bandwidth": 1.95,
+                "duration_seconds": 1.023,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 25.587619,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 1.752,
+                "duration_seconds": 1.1275,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 25.587619,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 1.752,
+                "duration_seconds": 1.1275,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 26.272608,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 932.328,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.6151,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 26.272608,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 466.164,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.6151,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.282676,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 659.255,
+                "bandwidth": 3.132,
+                "duration_seconds": 0.6747,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.282676,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 3.132,
+                "duration_seconds": 0.6747,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.665805,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.665805,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 0,
+        "node": {
+          "type": "sequencer",
+          "label": "Violin",
+          "events": [
+            {
+              "time_seconds": 15.208299,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.8763,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 16.392517,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.0853,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 17.716054,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 587.33,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.319773,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 659.255,
+                "bandwidth": 2.067,
+                "duration_seconds": 0.9707,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.900272,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.969932,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 20.672,
+                "duration_seconds": 0.1871,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.027982,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 11.484,
+                "duration_seconds": 0.2567,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.132472,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 17.227,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.202132,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 11.484,
+                "duration_seconds": 0.2567,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.306621,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 12.92,
+                "duration_seconds": 0.2393,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.399501,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 12.92,
+                "duration_seconds": 0.2393,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.492381,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 14.77,
+                "duration_seconds": 0.2219,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.573628,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 17.221,
+                "duration_seconds": 0.2045,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.643311,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 12.92,
+                "duration_seconds": 0.2393,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.73619,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 12.92,
+                "duration_seconds": 0.2393,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.82907,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 10.336,
+                "duration_seconds": 0.2741,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.94517,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 659.255,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.08449,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.22381,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.9561,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.127846,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 830.609,
+                "bandwidth": 2.153,
+                "duration_seconds": 0.9359,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.685125,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 2.953,
+                "duration_seconds": 0.7095,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.091474,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1396.913,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.219184,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1396.913,
+                "bandwidth": 2.793,
+                "duration_seconds": 0.7444,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.648753,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.776463,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 932.328,
+                "bandwidth": 2.349,
+                "duration_seconds": 0.8663,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.287302,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1174.659,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.426621,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1174.659,
+                "bandwidth": 2.871,
+                "duration_seconds": 0.7269,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.84458,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 830.609,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.97229,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 2.461,
+                "duration_seconds": 0.8314,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 25.459909,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 9.396,
+                "duration_seconds": 0.2916,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 25.587619,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 1046.502,
+                "bandwidth": 2.199,
+                "duration_seconds": 0.9185,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 26.133288,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 8.613,
+                "duration_seconds": 0.309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 26.272608,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.6151,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.282676,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 880.0,
+                "bandwidth": 5.44,
+                "duration_seconds": 0.4309,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.503265,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 783.991,
+                "bandwidth": 7.383,
+                "duration_seconds": 0.3438,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.665805,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 698.456,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 28.490113,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 1.95,
+                "duration_seconds": 1.023,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 29.105442,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 2.199,
+                "duration_seconds": 0.9185,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 29.651111,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 311.127,
+                "bandwidth": 1.914,
+                "duration_seconds": 1.0404,
+                "gain": 0.08
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 0,
+        "node": {
+          "type": "sequencer",
+          "label": "Viola",
+          "events": [
+            {
+              "time_seconds": 0.208209,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 2.153,
+                "duration_seconds": 0.9359,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 0.765488,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 1.415646,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 1.914,
+                "duration_seconds": 1.0404,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 2.042585,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 1.782,
+                "duration_seconds": 1.1101,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 2.715964,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 293.665,
+                "bandwidth": 2.027,
+                "duration_seconds": 0.9882,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.308073,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.911791,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 1.782,
+                "duration_seconds": 1.1101,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 4.58517,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 2.349,
+                "duration_seconds": 0.8663,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 5.096009,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 2.067,
+                "duration_seconds": 0.9707,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 5.676508,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 6.280227,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 6.930385,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 7.580544,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 2.067,
+                "duration_seconds": 0.9707,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.161043,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 311.127,
+                "bandwidth": 1.95,
+                "duration_seconds": 1.023,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 8.776349,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 293.665,
+                "bandwidth": 2.027,
+                "duration_seconds": 0.9882,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 9.368481,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 246.942,
+                "bandwidth": 1.615,
+                "duration_seconds": 1.2146,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.111519,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 10.761678,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 2.199,
+                "duration_seconds": 0.9185,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.307347,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.911066,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.723,
+                "duration_seconds": 1.1449,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 12.607664,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 164.814,
+                "bandwidth": 1.813,
+                "duration_seconds": 1.0927,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 13.269433,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 13.873152,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 14.523311,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 391.995,
+                "bandwidth": 1.752,
+                "duration_seconds": 1.1275,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 15.208299,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 1.879,
+                "duration_seconds": 1.0578,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 15.846848,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 2.199,
+                "duration_seconds": 0.9185,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 16.392517,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 440.0,
+                "bandwidth": 1.566,
+                "duration_seconds": 1.2494,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 17.158753,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 2.153,
+                "duration_seconds": 0.936,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 17.716054,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 293.665,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.319773,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 2.067,
+                "duration_seconds": 0.9707,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.900272,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 1.782,
+                "duration_seconds": 1.11,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 19.573628,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0753,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.22381,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 2.109,
+                "duration_seconds": 0.9533,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.792698,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 2.349,
+                "duration_seconds": 0.8663,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 21.303537,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.127846,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 2.153,
+                "duration_seconds": 0.9359,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.685125,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 2.247,
+                "duration_seconds": 0.9011,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.219184,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 311.127,
+                "bandwidth": 2.153,
+                "duration_seconds": 0.9359,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 23.776463,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 293.665,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.426621,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 246.942,
+                "bandwidth": 2.199,
+                "duration_seconds": 0.9185,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 24.97229,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.95,
+                "duration_seconds": 1.023,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 25.587619,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 1.752,
+                "duration_seconds": 1.1275,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 26.272608,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.6151,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.282676,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 3.132,
+                "duration_seconds": 0.6747,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.665805,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 28.490113,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 1.95,
+                "duration_seconds": 1.023,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 29.105442,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 2.199,
+                "duration_seconds": 0.9185,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 29.651111,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 261.626,
+                "bandwidth": 1.914,
+                "duration_seconds": 1.0404,
+                "gain": 0.08
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 0,
+        "node": {
+          "type": "sequencer",
+          "label": "Cello",
+          "events": [
+            {
+              "time_seconds": 0.208209,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.8516,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 2.042585,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 1.782,
+                "duration_seconds": 1.1101,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 2.715964,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 2.027,
+                "duration_seconds": 0.9882,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.308073,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 195.998,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 3.911791,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.782,
+                "duration_seconds": 1.1101,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 5.096009,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 164.814,
+                "bandwidth": 2.067,
+                "duration_seconds": 0.9707,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 6.280227,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 130.813,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 7.580544,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.5,
+                "duration_seconds": 4.0,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.307347,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 130.813,
+                "bandwidth": 1.5,
+                "duration_seconds": 3.0431,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 13.269433,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 195.998,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 13.873152,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 14.523311,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 329.628,
+                "bandwidth": 1.752,
+                "duration_seconds": 1.1275,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 15.208299,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 349.228,
+                "bandwidth": 1.5,
+                "duration_seconds": 3.0257,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 17.158753,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 2.153,
+                "duration_seconds": 0.936,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 17.716054,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 233.082,
+                "bandwidth": 1.988,
+                "duration_seconds": 1.0056,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.319773,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 195.998,
+                "bandwidth": 2.067,
+                "duration_seconds": 0.9707,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 18.900272,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.782,
+                "duration_seconds": 1.11,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.22381,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 164.814,
+                "bandwidth": 2.109,
+                "duration_seconds": 0.9533,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 21.303537,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 130.813,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.685125,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.5,
+                "duration_seconds": 4.0,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 26.272608,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 130.813,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.1898,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.665805,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 28.490113,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 174.614,
+                "bandwidth": 1.95,
+                "duration_seconds": 1.023,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 29.105442,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 195.998,
+                "bandwidth": 2.199,
+                "duration_seconds": 0.9185,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 29.651111,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 220.0,
+                "bandwidth": 1.914,
+                "duration_seconds": 1.0404,
+                "gain": 0.08
+              }
+            }
+          ]
+        }
+      },
+      {
+        "time_seconds": 0,
+        "node": {
+          "type": "sequencer",
+          "label": "Contrabass",
+          "events": [
+            {
+              "time_seconds": 0.208209,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 87.307,
+                "bandwidth": 1.5,
+                "duration_seconds": 4.0,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 5.096009,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 82.407,
+                "bandwidth": 2.067,
+                "duration_seconds": 0.9707,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 6.280227,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 65.406,
+                "bandwidth": 1.846,
+                "duration_seconds": 1.0752,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 7.580544,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 87.307,
+                "bandwidth": 1.5,
+                "duration_seconds": 4.0,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 11.307347,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 65.406,
+                "bandwidth": 1.5,
+                "duration_seconds": 4.0,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 15.208299,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 87.307,
+                "bandwidth": 1.5,
+                "duration_seconds": 4.0,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 20.22381,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 82.407,
+                "bandwidth": 2.109,
+                "duration_seconds": 0.9533,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 21.303537,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 65.406,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 22.685125,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 87.307,
+                "bandwidth": 1.5,
+                "duration_seconds": 4.0,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 26.272608,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 65.406,
+                "bandwidth": 1.5,
+                "duration_seconds": 2.1898,
+                "gain": 0.08
+              }
+            },
+            {
+              "time_seconds": 27.665805,
+              "node": {
+                "type": "org.cochlea.gammatone",
+                "center_frequency": 87.307,
+                "bandwidth": 1.5,
+                "duration_seconds": 1.3365,
+                "gain": 0.08
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -105,4 +105,20 @@ describe('api keys', () => {
         await expect(domain.authenticateApiKey(created.secret)).rejects.toThrow(Unauthenticated);
         await expect(domain.deleteApiKey(actor, created.id)).rejects.toThrow(NotFound);
     });
+
+    describe('issueApiKey (administrative)', () => {
+        it('issues a key without a principal, limited to the owner\'s roles', async () => {
+            const store = inMemory();
+            const domain = buildApiKeysDomain(store.persistence);
+            const owner = { id: 7 as UserId, roles: ['SOUND_READER', 'SOUND_EDITOR'] as const };
+            const key = await domain.issueApiKey(owner, { name: 'cli', roles: ['SOUND_EDITOR'] });
+            expect(key).toMatchObject({ userId: 7, roles: ['SOUND_EDITOR'] });
+            await expect(
+                domain.issueApiKey(owner, { name: 'cli', roles: ['ANNOTATION_EDITOR'] })
+            ).rejects.toThrow(InvalidRequest);
+            await expect(
+                domain.issueApiKey({ ...owner, roles: ['API_KEY_CREATOR'] }, { name: 'cli', roles: ['API_KEY_CREATOR'] })
+            ).rejects.toThrow(InvalidRequest);
+        });
+    });
 });

@@ -41,3 +41,5 @@
 **/.pytest_cache/
 infra/
 **/.terraform/
+**/target
+web/public/codec

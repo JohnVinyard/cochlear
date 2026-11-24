@@ -16,6 +16,8 @@
     "dev:stop": "docker compose down",
     "dev:logs": "docker compose logs --follow --tail=100",
     "build-shared": "yarn workspace @cochlea/shared build",
+    "build-codec": "sh codec/build-wasm.sh",
+    "test-codec": "cargo test --manifest-path codec/rust/Cargo.toml && node codec/schema/check-examples.cjs",
     "cli": "tsx api/src/cli.ts",
     "postinstall": "yarn build-shared",
     "typecheck": "yarn workspace @cochlea/shared build && yarn workspace @cochlea/api typecheck && yarn workspace @cochlea/web typecheck",

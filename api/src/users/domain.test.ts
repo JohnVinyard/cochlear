@@ -11,6 +11,7 @@ const inMemory = () => {
         getById: async (id) => users.find((u) => u.id === id) ?? null,
         getByFirebaseUid: async (uid) => users.find((u) => u.firebaseUid === uid) ?? null,
         getByEmail: async (email) => users.find((u) => u.email === email) ?? null,
+        getByUserName: async (name) => users.find((u) => u.userName === name) ?? null,
         async insert(user) {
             if (users.some((u) => u.userName === user.userName)) throw new UserNameTaken(user.userName);
             const created: User = {
@@ -72,5 +73,38 @@ describe('users', () => {
         await expect(domain.updateMe(firebasePrincipal(1), { userName: 'no spaces' })).rejects.toThrow(
             InvalidRequest
         );
+    });
+
+    describe('bot users', () => {
+        it('creates a bot without a firebase identity', async () => {
+            const domain = buildUsersDomain(inMemory().persistence);
+            const bot = await domain.ensureBotUser({
+                userName: 'musicnet',
+                aboutMe: 'Imports MusicNet',
+                roles: ['SOUND_EDITOR'],
+            });
+            expect(bot).toMatchObject({ userName: 'musicnet', firebaseUid: null, email: null });
+            expect(bot.aboutMe).toBe('Imports MusicNet');
+            expect(bot.roles).toEqual(['SOUND_EDITOR']);
+        });
+
+        it('is idempotent, and adds missing roles', async () => {
+            const store = inMemory();
+            const domain = buildUsersDomain(store.persistence);
+            const first = await domain.ensureBotUser({ userName: 'musicnet', roles: ['SOUND_EDITOR'] });
+            const second = await domain.ensureBotUser({
+                userName: 'musicnet',
+                roles: ['SOUND_EDITOR', 'ANNOTATION_EDITOR'],
+            });
+            expect(second.id).toBe(first.id);
+            expect(store.users).toHaveLength(1);
+            expect(second.roles).toEqual(['SOUND_EDITOR', 'ANNOTATION_EDITOR']);
+        });
+
+        it('refuses to turn a firebase user into a bot', async () => {
+            const domain = buildUsersDomain(inMemory().persistence);
+            await domain.principalForFirebaseIdentity({ uid: 'abc', email: 'jane@example.com' });
+            await expect(domain.ensureBotUser({ userName: 'jane', roles: [] })).rejects.toThrow(InvalidRequest);
+        });
     });
 });
