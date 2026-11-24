@@ -11,6 +11,14 @@ audio. The audio is referenced from the mirror at
 | Composer, ensemble, and the instruments that play | `tags@1` (whole sound) | 1 |
 | One note: the label row (`start_time`/`end_time` in samples, `instrument` as a 1-based GM program, `note` as a MIDI pitch, `start_beat`, `end_beat`, `note_value`) plus `instrument_name`. The segment is the note's span. | `musicnet-note@1` (kv) | ~3,300 |
 
+Each sound also lists its original recording as a **format**
+([`docs/sound-formats.md`](../../docs/sound-formats.md)): `audio/wav`, with
+the `sample_rate`, `channels`, `bit_depth`, `sample_format` and `size_bytes`
+read from the local copy's header (all 330 are 44.1 kHz, mono, 32-bit
+float). Pieces whose audio isn't in `--data-dir` get no format, since there's
+nothing to say about it. Re-running adds formats to sounds that don't have
+them yet; `--no-notes` makes that quick (about 80 s), skipping the notes.
+
 ## Running it
 
 ```bash

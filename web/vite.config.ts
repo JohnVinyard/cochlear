@@ -9,4 +9,13 @@ export default defineConfig({
         alias: { '@cochlea/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },
     },
     server: { port: 5173, strictPort: true },
+    build: {
+        rollupOptions: {
+            // the API reference is its own page, embedded in an iframe (see src/pages/ApiDocs.tsx)
+            input: {
+                main: fileURLToPath(new URL('./index.html', import.meta.url)),
+                apiReference: fileURLToPath(new URL('./api-reference.html', import.meta.url)),
+            },
+        },
+    },
 });

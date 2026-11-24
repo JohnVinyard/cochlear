@@ -21,6 +21,7 @@ export type ApiKeyId = Brand<number, 'ApiKeyId'>;
 export type SoundId = Brand<number, 'SoundId'>;
 export type AnnotationSchemaId = Brand<number, 'AnnotationSchemaId'>;
 export type AnnotationId = Brand<number, 'AnnotationId'>;
+export type SoundFormatId = Brand<number, 'SoundFormatId'>;
 
 // ---------------------------------------------------------------------------
 // Roles
@@ -129,12 +130,30 @@ export interface SoundResource {
     created_by: UserId;
     audio_url: string;
     info_url: string | null;
-    low_quality_audio_url: string | null;
     license_type: LicenseType;
     title: string | null;
     duration_seconds: number;
+    /** Other encodings of the same audio (see docs/sound-formats.md) */
+    formats: SoundFormatResource[];
     links: Links;
 }
+
+/** An encoding of a sound: a file, its media type, and metadata that varies by type */
+export interface SoundFormatResource {
+    id: SoundFormatId;
+    sound_id: SoundId;
+    url: string;
+    /** e.g. audio/mpeg, audio/wav, audio/vnd.cochlea.sprs+json */
+    mime_type: string;
+    /** Unstructured; suggested keys per type in docs/sound-formats.md (sample_rate, channels, bit_depth...) */
+    metadata: Record<string, unknown>;
+    created_by: UserId;
+    created_at: string;
+    links: Links;
+}
+
+/** The media type of documents in the cochlea codec (codec/SPEC.md) */
+export const SPRS_MIME_TYPE = 'audio/vnd.cochlea.sprs+json';
 
 export interface AnnotationSchemaResource {
     id: AnnotationSchemaId;

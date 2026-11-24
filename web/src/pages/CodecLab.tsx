@@ -3,7 +3,7 @@ import type { CodecViewer } from '../elements/codec-viewer';
 import '../elements/codec-viewer';
 
 /**
- * A hidden page (`/labs/codec`, not in the nav, no sign-in) for exploring
+ * A lab (`/labs/codec`, listed on /labs; no sign-in needed) for exploring
  * documents in the experimental cochlea codec (`codec/`).
  */
 

@@ -21,7 +21,7 @@ export interface ClearDataResult {
 }
 
 /**
- * Hard-deletes every sound and annotation (including soft-deleted ones), and
+ * Hard-deletes every sound (and its formats) and annotation (including soft-deleted ones), and
  * resets every user's state document to `{}`: bot state (e.g. a feed cursor)
  * describes data that's gone. State versions are bumped rather than reset,
  * so a bot's next conditional write fails (412) and it re-reads its state.
@@ -41,7 +41,7 @@ export const clearSoundsAndAnnotations = (pool: pg.Pool, { keepIds }: { keepIds:
         );
         await executeCommand(
             tx,
-            `truncate annotation_access, annotations, sounds ${keepIds ? 'continue' : 'restart'} identity`
+            `truncate annotation_access, annotations, sound_formats, sounds ${keepIds ? 'continue' : 'restart'} identity`
         );
         await executeCommand(
             tx,

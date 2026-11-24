@@ -16,7 +16,7 @@ What's done and what's next is in [`TODO.md`](TODO.md).
 | `codec/` | An experimental JSON audio codec: spec, schemas, a Rust/WebAssembly decoder (see [`codec/README.md`](codec/README.md)) |
 | `integrations/` | Dataset ingestion scripts (e.g. MusicNet), each run as its own bot user |
 | `bots/` | Long-running bots that follow feeds and annotate: `featurebot` (onsets, chroma, MFCCs), `segmentbot` (vectors for search) |
-| `docs/` | Conventions, e.g. [time series blobs](docs/annotation-conventions.md) that the web app can draw |
+| `docs/` | Conventions: [time series blobs](docs/annotation-conventions.md) the web app can draw, [sound formats](docs/sound-formats.md)' metadata |
 | `firebase/` | Firebase auth emulator image |
 | `docker/` | Development images |
 
@@ -46,7 +46,7 @@ These are thin wrappers around `docker compose`, which you can also use directly
 | firebase emulator UI | http://localhost:4000 |
 | postgres | `localhost:5432` (user, password and database are all `cochlea`) |
 | fake GCS | http://localhost:4443 |
-| codec lab (hidden) | http://localhost:5173/labs/codec |
+| labs | http://localhost:5173/labs ("Labs" in the nav), e.g. the codec lab at `/labs/codec` |
 
 Host ports can be overridden in `.env` (see `.env.example`). Data persists in
 `.data/`; delete that directory to start fresh.

@@ -80,3 +80,42 @@ def test_no_notes(data_dir: Path):
     [piece] = musicnet.load_pieces(data_dir)
     annotations = musicnet.annotations_for(piece, musicnet.read_labels(piece.labels_path), 44100, notes=False)
     assert [a["schema"] for a in annotations] == ["musicnet-metadata@1", "tags@1"]
+
+
+def write_extensible_wav(path: Path, frames: int, rate: int = 48000, channels: int = 2, bits: int = 24) -> None:
+    """WAVE_FORMAT_EXTENSIBLE, whose real format (PCM) is in the sub-format GUID"""
+    block = channels * bits // 8
+    pcm_guid = struct.pack("<H", 1) + bytes.fromhex("000000001000800000aa00389b71")
+    fmt = struct.pack("<HHIIHHHHI", 0xFFFE, channels, rate, rate * block, block, bits, 22, bits, 3) + pcm_guid
+    with open(path, "wb") as f:
+        f.write(struct.pack("<4sI4s", b"RIFF", 4 + 8 + len(fmt) + 8 + frames * block, b"WAVE"))
+        f.write(struct.pack("<4sI", b"fmt ", len(fmt)) + fmt)
+        f.write(struct.pack("<4sI", b"data", frames * block) + b"\0" * (frames * block))
+
+
+def test_reads_what_the_wav_header_says(tmp_path: Path):
+    write_wav(tmp_path / "float.wav", frames=100)
+    info = musicnet.wav_info(tmp_path / "float.wav")
+    assert (info.frames, info.sample_rate, info.channels, info.bits_per_sample, info.sample_format) == (
+        100, 44100, 1, 32, "float")
+    assert info.size_bytes == (tmp_path / "float.wav").stat().st_size
+
+    write_extensible_wav(tmp_path / "pcm24.wav", frames=10)
+    info = musicnet.wav_info(tmp_path / "pcm24.wav")
+    assert (info.frames, info.sample_rate, info.channels, info.bits_per_sample, info.sample_format) == (
+        10, 48000, 2, 24, "int")
+
+
+def test_registers_the_original_as_a_format_when_the_audio_is_local(data_dir: Path):
+    (data_dir / "test_data").mkdir()
+    write_wav(data_dir / "test_data" / "1730.wav", frames=44100)
+    [piece] = musicnet.load_pieces(data_dir)
+    sound = musicnet.sound_for(piece, 1.0, "https://mirror.example/", musicnet.wav_info(piece.wav_path))
+    assert sound["formats"] == [{
+        "url": "https://mirror.example/1730",
+        "mime_type": "audio/wav",
+        "metadata": {"sample_rate": 44100, "channels": 1, "bit_depth": 32, "sample_format": "float",
+                     "size_bytes": piece.wav_path.stat().st_size},
+    }]
+    # without the audio there's nothing to say about it
+    assert musicnet.sound_for(piece, 1.0, "https://mirror.example/")["formats"] == []

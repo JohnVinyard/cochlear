@@ -70,8 +70,12 @@ annotation-timeline { margin-top: 4px; }
 /* the API reference (Stoplight Elements) brings its own layout */
 .page.wide { max-width: none; padding: 0; }
 .api-docs-bar { padding: 8px 16px; justify-content: space-between; }
-.api-docs { overflow: hidden; border-top: 1px solid var(--border, #d0d4db); }
+.api-docs { display: block; width: 100%; border: 0; border-top: 1px solid var(--border, #d0d4db); }
 
 .search { display: flex; flex-direction: column; gap: 8px; }
 .search .grow { flex: 1; min-width: 240px; }
 .search textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; }
+
+.labs { list-style: none; padding: 0; display: grid; gap: 12px; }
+.labs h2 { margin: 0 0 4px; font-size: 1.1em; }
+.labs p { margin: 0; }

@@ -10,7 +10,7 @@ import annotationFeedQuery from '../annotations/adapters/annotationFeedQuery.sch
 import createAnnotations from '../annotations/adapters/createAnnotationsRequestBody.schema.json';
 import similarQuery from '../annotations/adapters/similarQuery.schema.json';
 import createApiKey from '../apiKeys/adapters/createApiKeyRequestBody.schema.json';
-import createSound from '../sounds/adapters/createSoundRequestBody.schema.json';
+import { createSoundFormatSchema, createSoundSchema } from '../sounds/adapters/express';
 import soundFeedQuery from '../sounds/adapters/soundFeedQuery.schema.json';
 import updateMe from '../users/adapters/updateMeRequestBody.schema.json';
 
@@ -92,7 +92,7 @@ export const TAGS: { name: string; description: string; paths: RegExp }[] = [
     {
         name: 'Sounds',
         description: 'Audio that lives elsewhere on the internet, registered by URL. Immutable; a feed, oldest first.',
-        paths: /^\/(sounds(\/\{sound_id\})?|users\/\{user_id\}\/sounds)$/,
+        paths: /^\/(sounds(\/\{sound_id\}(\/formats(\/\{format_id\})?)?)?|users\/\{user_id\}\/sounds)$/,
     },
     {
         name: 'Annotations',
@@ -242,10 +242,27 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                         created_by: { type: 'integer' },
                         audio_url: { type: 'string', format: 'uri' },
                         info_url: nullableString,
-                        low_quality_audio_url: nullableString,
                         license_type: { type: 'string', enum: [...LICENSE_TYPES] },
                         title: nullableString,
                         duration_seconds: { type: 'number' },
+                        formats: { type: 'array', items: ref('SoundFormat'), description: 'Other encodings of the audio' },
+                        links: ref('Links'),
+                    },
+                },
+                SoundFormat: {
+                    type: 'object',
+                    description:
+                        'An encoding of a sound: another file with the same audio. Immutable; anyone with SOUND_EDITOR ' +
+                        'may add one to any sound, and only its creator may delete it.',
+                    required: ['id', 'sound_id', 'url', 'mime_type', 'metadata', 'created_by', 'created_at', 'links'],
+                    properties: {
+                        id: { type: 'integer' },
+                        sound_id: { type: 'integer' },
+                        url: { type: 'string', format: 'uri' },
+                        mime_type: { type: 'string', description: 'e.g. audio/mpeg, audio/wav, audio/vnd.cochlea.sprs+json' },
+                        metadata: { type: 'object', description: 'Varies by type: sample_rate, channels, bit_depth...' },
+                        created_by: { type: 'integer' },
+                        created_at: { type: 'string', format: 'date-time' },
                         links: ref('Links'),
                     },
                 },
@@ -303,7 +320,8 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                 },
                 UpdateMeRequestBody: strip(updateMe),
                 CreateApiKeyRequestBody: strip(createApiKey),
-                CreateSoundRequestBody: strip(createSound),
+                CreateSoundRequestBody: strip(createSoundSchema),
+                CreateSoundFormatRequestBody: strip(createSoundFormatSchema),
                 CreateAnnotationSchemaRequestBody: strip(createAnnotationSchema),
                 CreateAnnotationsRequestBody: strip(createAnnotations),
             },
@@ -412,6 +430,33 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                     responses: { ...ok(ref('Sound')), '404': errorResponse('Not found'), '410': errorResponse('Deleted') },
                 },
                 delete: { summary: "Delete a sound (creator only)", responses: noContent },
+            },
+            '/sounds/{sound_id}/formats': {
+                parameters: [pathParam('sound_id', 'Sound id')],
+                get: {
+                    summary: "A sound's encodings",
+                    responses: {
+                        ...ok({ type: 'object', properties: { items: { type: 'array', items: ref('SoundFormat') } } }),
+                        '404': errorResponse('Not found'),
+                        '410': errorResponse('Deleted'),
+                    },
+                },
+                post: {
+                    summary: 'Add an encoding of a sound (any sound; SOUND_EDITOR)',
+                    requestBody: { required: true, content: json(ref('CreateSoundFormatRequestBody')) },
+                    responses: {
+                        ...created(ref('SoundFormat')),
+                        '409': errorResponse('The sound already has a format at this URL (Location: the existing one)'),
+                    },
+                },
+            },
+            '/sounds/{sound_id}/formats/{format_id}': {
+                parameters: [pathParam('sound_id', 'Sound id'), pathParam('format_id', 'Format id')],
+                get: {
+                    summary: 'An encoding of a sound',
+                    responses: { ...ok(ref('SoundFormat')), '404': errorResponse('Not found'), '410': errorResponse('Deleted') },
+                },
+                delete: { summary: 'Delete an encoding (its creator only)', responses: noContent },
             },
             '/sounds/{sound_id}/annotations': {
                 parameters: [pathParam('sound_id', 'Sound id')],

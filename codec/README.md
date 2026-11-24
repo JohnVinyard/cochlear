@@ -13,6 +13,9 @@ API. The format is specified in [`SPEC.md`](SPEC.md).
 | [`rust/`](rust) | The decoder (Rust): core, the `org.cochlea.gammatone` extension, a WebAssembly build and a CLI |
 | `../web/src/codec/`, `../web/src/elements/codec-viewer.ts` | The browser host and the `<codec-viewer>` element |
 
+Documents are `.sprs` files, of media type `audio/vnd.cochlea.sprs+json`
+(see [SPEC.md, Files and media type](SPEC.md#files-and-media-type)).
+
 The decoder is written in Rust and compiled to WebAssembly, rather than built
 on Web Audio nodes. That way one implementation runs in an
 `AudioWorkletProcessor` in the browser and natively in CLIs, desktop apps
@@ -20,8 +23,8 @@ and, maybe later, plugins.
 
 ## Trying it
 
-With `yarn dev` running, open http://localhost:5173/labs/codec. It's a hidden
-page: it isn't in the nav and doesn't need a sign-in. The `codec` compose
+With `yarn dev` running, open http://localhost:5173/labs/codec (or **Labs** in
+the web app's nav). It doesn't need a sign-in. The `codec` compose
 service builds the WebAssembly decoder into `web/public/codec/` when the
 stack starts.
 

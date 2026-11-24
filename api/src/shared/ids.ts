@@ -2,12 +2,13 @@ import type {
     AnnotationId,
     AnnotationSchemaId,
     ApiKeyId,
+    SoundFormatId,
     SoundId,
     UserId,
 } from '@cochlea/shared';
 import { InvalidRequest } from './errors';
 
-export type { AnnotationId, AnnotationSchemaId, ApiKeyId, SoundId, UserId };
+export type { AnnotationId, AnnotationSchemaId, ApiKeyId, SoundFormatId, SoundId, UserId };
 
 /**
  * Parse an untrusted value (path param, query string, database row) into a
@@ -33,3 +34,4 @@ export const toApiKeyId = intId<ApiKeyId>('api key id');
 export const toSoundId = intId<SoundId>('sound id');
 export const toAnnotationSchemaId = intId<AnnotationSchemaId>('annotation schema id');
 export const toAnnotationId = intId<AnnotationId>('annotation id');
+export const toSoundFormatId = intId<SoundFormatId>('sound format id');

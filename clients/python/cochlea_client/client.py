@@ -303,13 +303,17 @@ class CochleaClient:
         duration_seconds: float,
         title: Optional[str] = None,
         info_url: Optional[str] = None,
-        low_quality_audio_url: Optional[str] = None,
+        formats: Optional[Sequence[dict]] = None,
         exist_ok: bool = True,
     ) -> dict:
         """
         Registers a sound. Sounds are unique by `audio_url`; with `exist_ok`
         (the default) re-registering returns the existing sound, which makes
         dataset ingestion scripts safely re-runnable.
+
+        `formats` are other encodings of the same audio:
+        [{"url": ..., "mime_type": "audio/mpeg", "metadata": {"bitrate": 128000}}].
+        Re-registering an existing sound adds any of them it doesn't have yet.
         """
         body = {
             "audio_url": audio_url,
@@ -317,9 +321,36 @@ class CochleaClient:
             "duration_seconds": duration_seconds,
             "title": title,
             "info_url": info_url,
-            "low_quality_audio_url": low_quality_audio_url,
+            "formats": list(formats or []),
         }
         resp = self.session.post(self._url("/sounds"), json=body, timeout=self.timeout)
+        if resp.status_code == 409 and exist_ok and resp.headers.get("Location"):
+            sound = self.get(resp.headers["Location"])
+            have = {f["url"] for f in sound["formats"]}
+            missing = [f for f in formats or [] if f["url"] not in have]
+            for f in missing:
+                self.add_format(sound["id"], f["url"], f["mime_type"], f.get("metadata"))
+            return self.get(resp.headers["Location"]) if missing else sound
+        if not resp.ok:
+            raise ApiError(resp.status_code, resp.json().get("errors", []))
+        return resp.json()
+
+    def add_format(
+        self,
+        sound_id: int,
+        url: str,
+        mime_type: str,
+        metadata: Optional[dict] = None,
+        *,
+        exist_ok: bool = True,
+    ) -> dict:
+        """
+        Adds an encoding of a sound (any sound: e.g. an encoder bot's output).
+        A sound has each URL once; with `exist_ok` (the default), adding one it
+        already has returns the existing format.
+        """
+        body = {"url": url, "mime_type": mime_type, "metadata": metadata or {}}
+        resp = self.session.post(self._url(f"/sounds/{sound_id}/formats"), json=body, timeout=self.timeout)
         if resp.status_code == 409 and exist_ok and resp.headers.get("Location"):
             return self.get(resp.headers["Location"])
         if not resp.ok:

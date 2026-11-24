@@ -2,11 +2,25 @@
     "$id": "CreateSoundRequestBody",
     "type": "object",
     "additionalProperties": false,
-    "required": ["audio_url", "license_type", "duration_seconds"],
+    "required": [
+        "audio_url",
+        "license_type",
+        "duration_seconds"
+    ],
     "properties": {
-        "audio_url": { "type": "string", "format": "uri", "maxLength": 2048 },
-        "info_url": { "type": ["string", "null"], "format": "uri", "maxLength": 2048 },
-        "low_quality_audio_url": { "type": ["string", "null"], "format": "uri", "maxLength": 2048 },
+        "audio_url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+        },
+        "info_url": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "uri",
+            "maxLength": 2048
+        },
         "license_type": {
             "type": "string",
             "enum": [
@@ -19,7 +33,24 @@
                 "https://creativecommons.org/publicdomain/zero/1.0"
             ]
         },
-        "title": { "type": ["string", "null"], "maxLength": 1024 },
-        "duration_seconds": { "type": "number", "exclusiveMinimum": 0 }
+        "title": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 1024
+        },
+        "duration_seconds": {
+            "type": "number",
+            "exclusiveMinimum": 0
+        },
+        "formats": {
+            "description": "Encodings of the sound to register with it (at most 20); more can be added later",
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+                "$comment": "CreateSoundFormatRequestBody: substituted by express.ts"
+            }
+        }
     }
 }

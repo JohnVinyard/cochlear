@@ -113,25 +113,52 @@ def load_pieces(data_dir: Path) -> list[Piece]:
     return sorted(pieces, key=lambda p: p.id)
 
 
-def wav_frames(path: Path) -> tuple[int, int]:
-    """(frames, sample rate) from a RIFF header. MusicNet's are float32, which the `wave` module can't read."""
+@dataclass(frozen=True)
+class WavInfo:
+    frames: int
+    sample_rate: int
+    channels: int
+    bits_per_sample: int
+    #: "int" (PCM) or "float" (IEEE float)
+    sample_format: str
+    size_bytes: int
+
+
+WAVE_FORMAT_PCM, WAVE_FORMAT_IEEE_FLOAT, WAVE_FORMAT_EXTENSIBLE = 1, 3, 0xFFFE
+
+
+def wav_info(path: Path) -> WavInfo:
+    """What a RIFF/WAVE header says. MusicNet's are float32, which the `wave` module can't read."""
     with open(path, "rb") as f:
         riff, _, wave = struct.unpack("<4sI4s", f.read(12))
         if riff != b"RIFF" or wave != b"WAVE":
             raise ValueError(f"{path} isn't a WAV file")
-        block_align = sample_rate = None
+        fmt = None
         while header := f.read(8):
             chunk_id, size = struct.unpack("<4sI", header)
             if chunk_id == b"fmt ":
-                _, _, sample_rate, _, block_align = struct.unpack("<HHIIH", f.read(14))
-                f.seek(size - 14 + (size & 1), 1)
+                body = f.read(size + (size & 1))
+                tag, channels, rate, _, block_align, bits = struct.unpack("<HHIIHH", body[:16])
+                if tag == WAVE_FORMAT_EXTENSIBLE and size >= 40:
+                    tag = struct.unpack("<H", body[24:26])[0]  # the sub-format GUID starts with the real tag
+                if tag not in (WAVE_FORMAT_PCM, WAVE_FORMAT_IEEE_FLOAT):
+                    raise ValueError(f"{path}: unsupported WAV format tag {tag}")
+                fmt = (rate, channels, bits, block_align, "float" if tag == WAVE_FORMAT_IEEE_FLOAT else "int")
             elif chunk_id == b"data":
-                if not block_align:
+                if not fmt:
                     break
-                return size // block_align, sample_rate
+                rate, channels, bits, block_align, sample_format = fmt
+                return WavInfo(frames=size // block_align, sample_rate=rate, channels=channels, bits_per_sample=bits,
+                               sample_format=sample_format, size_bytes=path.stat().st_size)
             else:
                 f.seek(size + (size & 1), 1)
     raise ValueError(f"{path} has no fmt/data chunks")
+
+
+def wav_frames(path: Path) -> tuple[int, int]:
+    """(frames, sample rate) from a RIFF header"""
+    info = wav_info(path)
+    return info.frames, info.sample_rate
 
 
 def read_labels(path: Path) -> list[dict]:
@@ -164,14 +191,32 @@ def duration_and_rate(piece: Piece, labels: list[dict]) -> tuple[float, int]:
     return max(float(piece.metadata["seconds"]), last_note), SAMPLE_RATE
 
 
-def sound_for(piece: Piece, duration_seconds: float, audio_base_url: str) -> dict:
-    m = piece.metadata
+def original_format(audio_url: str, wav: WavInfo) -> dict:
+    """The original recording, described as one of the sound's formats (docs/sound-formats.md)"""
     return {
-        "audio_url": f"{audio_base_url.rstrip('/')}/{piece.id}",
+        "url": audio_url,
+        "mime_type": "audio/wav",
+        "metadata": {
+            "sample_rate": wav.sample_rate,
+            "channels": wav.channels,
+            "bit_depth": wav.bits_per_sample,
+            "sample_format": wav.sample_format,
+            "size_bytes": wav.size_bytes,
+        },
+    }
+
+
+def sound_for(piece: Piece, duration_seconds: float, audio_base_url: str, wav: Optional[WavInfo] = None) -> dict:
+    """The sound, with its original as a format when the local copy of the audio says what it is"""
+    m = piece.metadata
+    audio_url = f"{audio_base_url.rstrip('/')}/{piece.id}"
+    return {
+        "audio_url": audio_url,
         "license_type": LICENSE,
         "duration_seconds": duration_seconds,
         "title": f"{m['composer']}: {m['composition']}, {m['movement']}",
         "info_url": INFO_URL,
+        "formats": [original_format(audio_url, wav)] if wav else [],
     }
 
 
@@ -265,7 +310,8 @@ def main(argv: list[str]) -> int:
     for n, piece in enumerate(pieces, 1):
         labels = read_labels(piece.labels_path)
         duration, rate = duration_and_rate(piece, labels)
-        sound = sound_for(piece, duration, args.audio_base_url)
+        wav = wav_info(piece.wav_path) if piece.wav_path else None
+        sound = sound_for(piece, duration, args.audio_base_url, wav)
         annotations = annotations_for(piece, labels, rate, notes=not args.no_notes)
         prefix = f"[{n}/{len(pieces)}] {piece.id}"
         if not client:

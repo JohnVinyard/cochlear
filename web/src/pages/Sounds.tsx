@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router';
 import { api, ApiError, appPath, useFeed, useResource } from '../api';
 import { AnnotationTable, ApiLink, ErrorMessage, LoadMore } from '../components';
 import { AnnotationTimeline } from '../elements/AnnotationTimeline';
-import { AudioView } from '../elements/AudioView';
+import { AudioView, playSpan } from '../elements/AudioView';
 import { SoundTimeseries } from '../elements/TimeseriesViews';
 import { SimilarSegments, VectorLanes } from '../vectors/VectorSearch';
 import type { AudioViewElement } from '../elements/web-components';
@@ -109,8 +109,9 @@ export const SoundPage = () => {
 
     const play = useCallback(
         (a: AnnotationResource) => {
-            if (sound.data && a.start_seconds !== null && a.duration_seconds !== null) {
-                audioView.current?.playAudio(sound.data.audio_url, a.start_seconds, a.duration_seconds);
+            // just the annotation's span, not on to the end of the sound
+            if (sound.data && audioView.current && a.start_seconds !== null && a.duration_seconds !== null) {
+                playSpan(audioView.current, sound.data.audio_url, a.start_seconds, a.duration_seconds);
             }
         },
         [sound.data]
@@ -152,6 +153,7 @@ export const SoundPage = () => {
                 {s.info_url && <> · <a href={s.info_url}>info</a></>} · added by <ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink>
                 {me.data?.id === s.created_by && <> · <button className="link danger" onClick={remove}>delete</button></>}
             </p>
+            <SoundFormats sound={s} />
             <div className="row">
                 <button className={view === 'time-series' ? '' : 'secondary'} onClick={() => setView('time-series')}>Waveform</button>
                 <button className={view === 'spectrogram' ? '' : 'secondary'} onClick={() => setView('spectrogram')}>Spectrogram</button>
@@ -174,6 +176,32 @@ export const SoundPage = () => {
         </>
     );
 };
+
+/** "1.5 kHz", "128 kbps": metadata values worth formatting; everything else as it is */
+const formatMetadata = (key: string, value: unknown): string => {
+    if (typeof value === 'number' && key === 'sample_rate') return `${value / 1000} kHz`;
+    if (typeof value === 'number' && key === 'bitrate') return `${Math.round(value / 1000)} kbps`;
+    if (typeof value === 'number' && key === 'size_bytes') return `${(value / 1e6).toFixed(1)} MB`;
+    return `${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`;
+};
+
+/** Other encodings of the sound (sound_formats), if it has any */
+const SoundFormats = ({ sound }: { sound: SoundResource }) =>
+    sound.formats.length ? (
+        <p className="muted formats">
+            Also as{' '}
+            {sound.formats.map((f, i) => (
+                <span key={f.id}>
+                    {i > 0 && ' · '}
+                    <a href={f.url}>{f.mime_type}</a>
+                    {Object.keys(f.metadata).length > 0 &&
+                        ` (${Object.entries(f.metadata)
+                            .map(([k, v]) => formatMetadata(k, v))
+                            .join(', ')})`}
+                </span>
+            ))}
+        </p>
+    ) : null;
 
 /** The simplest possible annotation editor:  tags, optionally for a segment */
 const AddTags = ({ sound, onCreated }: { sound: SoundResource; onCreated: () => void }) => {

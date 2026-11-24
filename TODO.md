@@ -53,6 +53,8 @@ The design background is in `Audio Annotations API and App.md`.
 
 ## Web components
 
+- [ ] Upstream: `<audio-view>`'s `playAudio(url, start, duration)` ignores `duration` once the view has rendered, and plays to the end of the visible view (`currentEndTimeSeconds`). Prefer an explicit duration: `const playFor = durationSeconds ?? (this.currentEndTimeSeconds ?? 5) - start` (making the parameter's default `undefined` rather than 5). Then delete the `playSpan` workaround in `web/src/elements/AudioView.tsx`
+
 - [ ] Upstream `<annotation-timeline>` (`web/src/elements/annotation-timeline.ts`) to https://github.com/JohnVinyard/web-components
 - [ ] Sync `<annotation-timeline>` with `<audio-view>` zoom/scroll. Today it maps the whole duration to its own width.
 - [ ] In web-components: make `<audio-view>` property setters reflect to attributes, so React 19 (which sets properties) works without the `AudioView.tsx` wrapper
@@ -75,6 +77,8 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [ ] Bridge to the API: e.g. a `musicnet-note@1` → codec document transform (`codec/examples/generate.py` does this from local files)
 
 ## Integrations
+
+- [ ] Web app: play a sound's lighter format (e.g. a compressed preview), when it has one, instead of always fetching `audio_url`
 
 - [ ] Should `json_schema` also validate `kv` values for kv-kind schemas? Today it validates only `data`, so `musicnet-note@1` has no schema for its fields.
 - [ ] Mark bot users as bots (e.g. `users.is_bot`), and show them that way in the web app
@@ -122,8 +126,10 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [x] Codec draft 0.2: `defs` and `$ref` (sounds, envelopes, patterns; instance paths plus `source` pointers; errors located in the definition), reverse-DNS extension types, `requires`; `drums.json` rewritten around patterns (172 KB → 9 KB); the viewer shows references and highlights every use of a definition
 
 - [x] User state documents (`GET`/`PUT /v1/users/me/state`, ETag/If-Match, reset by clear-data), and `client.get_state`/`put_state`
+- [x] MusicNet registers each sound's original as an `audio/wav` format, with sample rate, channels, bit depth, sample format and size read from the WAV header (all 330 done)
+- [x] Sound formats (`sound_formats`, replacing `sounds.low_quality_audio_url`): other encodings of a sound, each a URL, MIME type and free-form metadata (`docs/sound-formats.md`); embedded in sounds, `/sounds/{id}/formats`, addable by any SOUND_EDITOR, deletable by their creator; in the Python client and on the sound page. The codec's file extension and media type (`.sprs`, `audio/vnd.cochlea.sprs+json`) are in `codec/SPEC.md`
 - [x] Annotation search: `q` (full-text over tags, prose and JSON string values; a stored `search_tsv` column with a GIN index) and `prop=key:value` (exact JSON matching via the kv index) on every annotation feed; in the Python client (`q=`, `props=`) and on the web app's Annotations page
-- [x] API reference in the web app (`/api-docs`, "API" in the nav): Stoplight Elements 9.0.29 from a CDN, lazily loaded, rendering `/v1/openapi.json`
+- [x] API reference in the web app (`/api-docs`, "API" in the nav): Stoplight Elements 9.0.29 from a CDN, rendering `/v1/openapi.json`, isolated in an iframe (`api-reference.html`) because its stylesheet carries a global CSS reset
 - [x] MusicNet's bucket CORS allows `Range` (and exposes `Content-Range`), so segment playback uses range requests even where browsers preflight them
 - [x] Vector search: a per-schema HNSW index for every vector schema (created with the schema, reconciled at startup), `GET /annotations/{id}/similar`; segmentbot (25-d chroma + MFCC per onset); botkit (the shared bot loop); vector lanes on the sound page, a 3-d t-SNE (from scratch, in a worker) of the neighbours with three.js, and segment playback by HTTP range requests
 - [x] Time series convention for `.npz` blob annotations (`docs/annotation-conventions.md`, `TimeseriesData`); `<timeseries-view>` (canvas heatmap/line, dependency-free `.npz` reader) on the sound page; a `kind` filter on annotation feeds; `sync_annotations(prune=True)`; featurebot v2 writes the convention

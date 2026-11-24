@@ -14,6 +14,28 @@ export interface AudioViewProps {
 }
 
 /**
+ * Plays exactly [start, start + duration) of a sound in an `<audio-view>`.
+ *
+ * Works around `<audio-view>` (web-components 0.0.102) ignoring
+ * `playAudio`'s duration once it has rendered: it plays to the end of the
+ * visible view (`currentEndTimeSeconds`) instead, i.e. usually to the end of
+ * the sound. `playAudio` reads that field synchronously, before its first
+ * `await`, so clearing it for the call (and restoring it straight after)
+ * makes it use our duration, and leaves the element's own click-to-play
+ * as it was. Remove this once web-components prefers an explicit duration.
+ */
+export const playSpan = (el: AudioViewElement, url: string, startSeconds: number, durationSeconds: number) => {
+    const view = el as AudioViewElement & { currentEndTimeSeconds?: number | null };
+    const end = view.currentEndTimeSeconds;
+    view.currentEndTimeSeconds = null;
+    try {
+        el.playAudio(url, startSeconds, durationSeconds);
+    } finally {
+        view.currentEndTimeSeconds = end;
+    }
+};
+
+/**
  * Wraps `<audio-view>`.
  *
  * React 19 assigns *properties* (not attributes) on custom elements when the

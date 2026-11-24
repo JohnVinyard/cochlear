@@ -57,6 +57,31 @@ The key words MUST, SHOULD and MAY are used as in RFC 2119.
 Any other field is an error. JSON Schemas for documents and for each module
 are in [`schema/`](schema).
 
+### Files and media type
+
+| | |
+|---|---|
+| File extension | `.sprs` |
+| Media type | `audio/vnd.cochlea.sprs+json` (not yet registered) |
+| Encoding | UTF-8 JSON (RFC 8259) |
+
+- **Why this media type.** A bare `audio/sprs` would sit in IANA's
+  *standards tree*, which is for formats published by standards bodies. The
+  *vendor tree* (`vnd.`) is the open, first-come route for a format like
+  this one. The `+json` structured-syntax suffix (RFC 6839) tells generic
+  tools (editors, browser dev tools, proxies, compressors) that the body is
+  JSON, even if they've never heard of the format. It's under `audio/`
+  because a document *is* audio, given a decoder (as `audio/midi` is).
+- **Hosts** SHOULD also accept documents served as `application/json`, or
+  named `.json`, as the examples in this repository are.
+- **Compression** belongs to the transport, not the format: serve documents
+  with HTTP `Content-Encoding: gzip` (or `br`). They compress well: the
+  MusicNet example is 25× smaller gzipped (70 KB → 2.8 KB); `drums.json`,
+  whose hi-hat is an embedded base64 sample, only 3× (11 KB → 3.9 KB).
+- **In the annotation API,** a document that encodes a sound is one of that
+  sound's formats (`POST /v1/sounds/{id}/formats`), with this media type, and
+  metadata such as `{"version": "0.2", "requires": {...}}`.
+
 ## Nodes
 
 Every node is an object with a string `type`, which selects the module that
@@ -366,6 +391,13 @@ The impulse response of a gammatone filter,
    pursuit: decompose a sound into atoms, host the atom dictionary, and
    describe the sound as timed sampler events. This is probably what
    decides whether the format is useful (see below).
+
+9. **Naming.** Files are `.sprs` and `audio/vnd.cochlea.sprs+json`, but a
+   document's `format` field still says `"cochlea-codec"`. Should it say
+   `"sprs"`? Changing it is a breaking change (a new major version, or
+   decoders accepting both for a while). And `vnd.cochlea` assumes the project
+   keeps its name; the media type should be registered with IANA once the
+   names settle.
 
 ## Prior art
 

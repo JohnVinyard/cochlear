@@ -1,0 +1,19 @@
+{
+    "$id": "CreateSoundFormatRequestBody",
+    "description": "An encoding of a sound: another file with the same audio",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["url", "mime_type"],
+    "properties": {
+        "url": { "type": "string", "format": "uri", "maxLength": 2048 },
+        "mime_type": {
+            "description": "type/subtype (RFC 6838), without parameters, e.g. audio/mpeg, audio/wav, audio/vnd.cochlea.sprs+json",
+            "type": "string",
+            "maxLength": 255
+        },
+        "metadata": {
+            "description": "Anything about the encoding (at most 16 KB): sample_rate, channels, bit_depth, bitrate... Suggested keys per type are in docs/sound-formats.md.",
+            "type": "object"
+        }
+    }
+}

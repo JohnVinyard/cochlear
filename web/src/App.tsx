@@ -3,6 +3,7 @@ import { AuthProvider, logOut, useAuth } from './auth';
 import { AnnotationPage, AnnotationsPage } from './pages/Annotations';
 import { ApiDocsPage } from './pages/ApiDocs';
 import { CodecLab } from './pages/CodecLab';
+import { LabsPage } from './pages/Labs';
 import { LoginPage } from './pages/Login';
 import { SchemaPage, SchemasPage } from './pages/Schemas';
 import { SoundPage, SoundsPage } from './pages/Sounds';
@@ -16,7 +17,7 @@ export const App = () => (
     <AuthProvider>
         <BrowserRouter>
             <Routes>
-                {/* hidden: not in the nav, and no sign-in needed */}
+                {/* no sign-in needed; listed on /labs */}
                 <Route path="labs/codec" element={<CodecLab />} />
                 <Route element={<Layout />}>
                     <Route index element={<Navigate to="/sounds" replace />} />
@@ -34,6 +35,7 @@ export const App = () => (
                     <Route path="me" element={<MePage />} />
                     <Route path="api-keys" element={<ApiKeysPage />} />
                     <Route path="api-docs" element={<ApiDocsPage />} />
+                    <Route path="labs" element={<LabsPage />} />
                     <Route path="*" element={<p>Not found.</p>} />
                 </Route>
             </Routes>
@@ -54,6 +56,7 @@ const Layout = () => {
                 <NavLink to="/annotations" end>Annotations</NavLink>
                 <NavLink to="/annotation-schemas" end>Schemas</NavLink>
                 <NavLink to="/api-docs">API</NavLink>
+                <NavLink to="/labs" end>Labs</NavLink>
                 <span className="spacer" />
                 <NavLink to="/me">{user.email}</NavLink>
                 <NavLink to="/api-keys">API keys</NavLink>

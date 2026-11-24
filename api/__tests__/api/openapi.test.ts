@@ -10,6 +10,7 @@ const SAMPLE_PARAMS: Record<string, string> = {
     sound_id: '999999999',
     annotation_id: '999999999',
     ref: 'tags@1',
+    format_id: '999999999',
 };
 
 describe('openapi spec', () => {
