@@ -97,7 +97,10 @@ export class TimeseriesView extends HTMLElement {
         canvas.addEventListener('mouseleave', () => (this.$('.hover').textContent = ''));
         canvas.addEventListener('click', (e) => {
             const at = this.at(e);
-            if (at) this.dispatchEvent(new CustomEvent('timeseries-selected', { bubbles: true, composed: true, detail: at }));
+            if (at) {
+                const detail = { ...at, timeStamp: e.timeStamp };
+                this.dispatchEvent(new CustomEvent('timeseries-selected', { bubbles: true, composed: true, detail }));
+            }
         });
     }
 

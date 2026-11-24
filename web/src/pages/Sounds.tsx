@@ -1,5 +1,5 @@
 import { LICENSE_TYPES, type AnnotationResource, type Page, type SoundResource, type UserResource } from '@cochlea/shared';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api, ApiError, appPath, useFeed, useResource } from '../api';
 import { AnnotationTable, ApiLink, ErrorMessage, LicenseBadge, LoadMore } from '../components';
@@ -8,6 +8,7 @@ import { AudioView, playSpan } from '../elements/AudioView';
 import { SoundTimeseries } from '../elements/TimeseriesViews';
 import { SimilarSegments, VectorLanes } from '../vectors/VectorSearch';
 import { StarButton } from '../favorites';
+import { announceSource, registerSound } from '../score/store';
 import type { AudioViewElement } from '../elements/web-components';
 
 export const SoundsPage = () => {
@@ -110,30 +111,37 @@ export const SoundPage = () => {
     const [view, setView] = useState<'time-series' | 'spectrogram'>('time-series');
     const [query, setQuery] = useState<AnnotationResource | null>(null);
 
+    // so the score can name what's played here
+    useEffect(() => {
+        if (sound.data) registerSound(sound.data);
+    }, [sound.data]);
+
     const play = useCallback(
-        (a: AnnotationResource) => {
+        (a: AnnotationResource, timeStamp?: number) => {
             // just the annotation's span, not on to the end of the sound
             if (sound.data && audioView.current && a.start_seconds !== null && a.duration_seconds !== null) {
-                playSpan(audioView.current, sound.data.audio_url, a.start_seconds, a.duration_seconds);
+                announceSource('annotation');
+                playSpan(audioView.current, sound.data.audio_url, a.start_seconds, a.duration_seconds, timeStamp);
             }
         },
         [sound.data]
     );
 
     const playFrom = useCallback(
-        (seconds: number) => {
-            if (sound.data) {
+        (seconds: number, timeStamp?: number) => {
+            if (sound.data && audioView.current) {
                 const start = Math.max(0, seconds);
-                audioView.current?.playAudio(sound.data.audio_url, start, sound.data.duration_seconds - start);
+                announceSource('feature');
+                playSpan(audioView.current, sound.data.audio_url, start, sound.data.duration_seconds - start, timeStamp);
             }
         },
         [sound.data]
     );
 
     const search = useCallback(
-        (a: AnnotationResource) => {
+        (a: AnnotationResource, timeStamp?: number) => {
             setQuery(a);
-            play(a);
+            play(a, timeStamp);
         },
         [play]
     );

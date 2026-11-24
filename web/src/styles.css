@@ -24,7 +24,11 @@
 body { margin: 0; background: var(--bg); color: var(--fg); }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.nav { display: flex; gap: 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.nav { display: flex; gap: 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+       /* sticky: stays at the top as the page scrolls (it needs a background, or content shows through) */
+       position: sticky; top: 0; z-index: 30; background: var(--bg); }
+/* in-page jumps (#anchors) land below the sticky header, not under it */
+html { scroll-padding-top: 56px; }
 .nav a.active { font-weight: 600; }
 .brand { margin-right: 8px; }
 .spacer { flex: 1; }
@@ -106,3 +110,14 @@ a.license span { margin-left: 4px; }
 .vector-detail p { margin: 4px 0; }
 
 th.number, td.number { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* the score: a strip along the bottom while recording (score/ScoreBar.tsx) */
+.score-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+             padding: 6px 12px; background: #1a1a19; color: #f0efec; box-shadow: 0 -1px 0 rgba(255,255,255,0.10), 0 -4px 12px rgba(0,0,0,0.25); }
+.score-bar score-strip { flex: 1; min-width: 0; }
+.score-bar-controls { display: flex; align-items: center; gap: 8px; font-size: 13px; white-space: nowrap; }
+.score-bar a { color: #8fb8ff; }
+.score-bar .muted { color: #898781; }
+.score-bar button.link { color: #c3c2b7; }
+.rec { color: #e5484d; }
+body.score-bar-open { padding-bottom: 64px; }

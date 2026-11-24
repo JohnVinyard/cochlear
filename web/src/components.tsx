@@ -148,7 +148,7 @@ export const AnnotationTable = ({
     showSound = true,
 }: {
     items: AnnotationResource[];
-    onSelect?: (a: AnnotationResource) => void;
+    onSelect?: (a: AnnotationResource, timeStamp?: number) => void;
     /** Off where every annotation is on the same sound (e.g. that sound's page) */
     showSound?: boolean;
 }) => {
@@ -170,7 +170,7 @@ export const AnnotationTable = ({
             </thead>
             <tbody>
                 {items.map((a) => (
-                    <tr key={a.id} onClick={() => onSelect?.(a)} className={onSelect && a.start_seconds !== null ? 'clickable' : ''}>
+                    <tr key={a.id} onClick={(e) => onSelect?.(a, e.timeStamp)} className={onSelect && a.start_seconds !== null ? 'clickable' : ''}>
                         <td>
                             {a.start_seconds !== null && a.duration_seconds !== null && (
                                 <StarButton

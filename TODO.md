@@ -44,6 +44,11 @@ The design background is in `Audio Annotations API and App.md`.
 
 ## Web app
 
+- [ ] The score (`/score`): try recording in a browser (the store, strip and page are untested there); then the next steps: upload a score as a user-created sound (an `audio/vnd.cochlea.sprs+json` format, rendered to audio for annotation), trim/select a span of it before export, open it in the codec lab, and quantise or otherwise edit it
+- [ ] The score records when the user clicked (what they meant), not when the audio started, which lags by a fetch (range request or decode). Worth measuring that lag, and keeping both
+
+- [ ] Audio outlives the page that started it. `<audio-view>`'s `disconnectedCallback` stops its playhead and resize observer but not the sound, so leaving a sound's page mid-playback leaves audio playing with nothing on screen to stop it; the 3-d plot's `SegmentPlayer` is module-level, and also plays on with no control. Fixes: upstream, `<audio-view>` stops on disconnect (or offers a "show the playhead, don't play" mode); here, one app-wide player (a persistent "now playing" bar in `Layout`, or above `<Routes>` to cover the codec lab too) that all playback goes through, with stop, and perhaps a queue
+
 - [ ] Favorites: look at the stars and the Favorites page in a browser. Later: public favorites (just `access: "*"`) and "most starred"; favorites of other things (users, schemas) would need annotations of more than sounds
 
 - [ ] Look at the API reference (`/api-docs`) in a browser, including "Try it" with a copied sign-in token; and see whether Elements' styles need adjusting for the app's dark mode
@@ -128,6 +133,7 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [x] Codec draft 0.2: `defs` and `$ref` (sounds, envelopes, patterns; instance paths plus `source` pointers; errors located in the definition), reverse-DNS extension types, `requires`; `drums.json` rewritten around patterns (172 KB → 9 KB); the viewer shows references and highlights every use of a definition
 
 - [x] User state documents (`GET`/`PUT /v1/users/me/state`, ETag/If-Match, reset by clear-data), and `client.get_state`/`put_state`
+- [x] The score: records what the user plays, anywhere in the app (via `<audio-view>`'s play events and the 3-d plot's player), timed by the click's high-resolution timestamp; the last 30 minutes in localStorage, merged across tabs; a strip along the bottom of every page while recording; a Score page (record, clear, every play with its gap to the last), and a `.sprs` download (a sequencer of samplers, URLs defined once)
 - [x] Tests don't leave data behind: API tests run against their own database (`cochlea_test`) and API server, and delete their emulator accounts; `yarn cli remove-test-data` removed what earlier runs left (1,732 users, 797 sounds, 159 schemas, 96 vector indices, 6,765 annotations)
 - [x] Favorites ("stars"): private `favorite@1` annotations (a seeded schema, so a "favorite" tag elsewhere doesn't count); ☆/★ on sounds, segment annotations and similarity-search results; a Favorites page. No endpoints of their own
 - [x] MusicNet registers each sound's original as an `audio/wav` format, with sample rate, channels, bit depth, sample format and size read from the WAV header (all 330 done)

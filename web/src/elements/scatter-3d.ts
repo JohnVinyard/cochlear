@@ -286,7 +286,7 @@ export class Scatter3d extends HTMLElement {
         const index = this.pick(e);
         if (index === null) return;
         this.selected = index;
-        this.dispatchEvent(new CustomEvent('point-selected', { bubbles: true, composed: true, detail: { index } }));
+        this.dispatchEvent(new CustomEvent('point-selected', { bubbles: true, composed: true, detail: { index, timeStamp: e.timeStamp } }));
     };
 
     private readonly onLeave = () => {

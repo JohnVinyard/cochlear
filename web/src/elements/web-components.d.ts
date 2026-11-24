@@ -20,6 +20,7 @@ declare module 'react' {
             'vector-lane': CustomElementProps<import('./vector-lane').VectorLane>;
             'json-view': CustomElementProps<import('./json-view').JsonView>;
             'vector-bars': CustomElementProps<import('./vector-bars').VectorBars>;
+            'score-strip': CustomElementProps<import('./score-strip').ScoreStrip>;
             'scatter-3d': CustomElementProps<import('./scatter-3d').Scatter3d>;
             'codec-viewer': CustomElementProps<import('./codec-viewer').CodecViewer>;
         }

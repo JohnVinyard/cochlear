@@ -152,12 +152,17 @@ export class AnnotationTimeline extends HTMLElement {
                 el.style.top = `${i * LANE_HEIGHT_PX + 2}px`;
                 el.title = `${a.label} (${a.start_seconds.toFixed(2)}s – ${(a.start_seconds + a.duration_seconds).toFixed(2)}s)`;
                 el.textContent = a.label;
-                el.addEventListener('click', () =>
+                el.addEventListener('click', (e) =>
                     this.dispatchEvent(
                         new CustomEvent('annotation-selected', {
                             bubbles: true,
                             composed: true,
-                            detail: { id: a.id, startSeconds: a.start_seconds, durationSeconds: a.duration_seconds },
+                            detail: {
+                                id: a.id,
+                                startSeconds: a.start_seconds,
+                                durationSeconds: a.duration_seconds,
+                                timeStamp: e.timeStamp,
+                            },
                         })
                     )
                 );

@@ -24,12 +24,19 @@ export interface AudioViewProps {
  * makes it use our duration, and leaves the element's own click-to-play
  * as it was. Remove this once web-components prefers an explicit duration.
  */
-export const playSpan = (el: AudioViewElement, url: string, startSeconds: number, durationSeconds: number) => {
+export const playSpan = (
+    el: AudioViewElement,
+    url: string,
+    startSeconds: number,
+    durationSeconds: number,
+    /** The triggering DOM event's timeStamp: <audio-view> reports it with the play (see score/store.ts) */
+    timeStamp = performance.now()
+) => {
     const view = el as AudioViewElement & { currentEndTimeSeconds?: number | null };
     const end = view.currentEndTimeSeconds;
     view.currentEndTimeSeconds = null;
     try {
-        el.playAudio(url, startSeconds, durationSeconds);
+        el.playAudio(url, startSeconds, durationSeconds, timeStamp);
     } finally {
         view.currentEndTimeSeconds = end;
     }

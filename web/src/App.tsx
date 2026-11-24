@@ -4,6 +4,9 @@ import { AnnotationPage, AnnotationsPage } from './pages/Annotations';
 import { ApiDocsPage } from './pages/ApiDocs';
 import { CodecLab } from './pages/CodecLab';
 import { FavoritesPage } from './pages/Favorites';
+import { ScorePage } from './pages/Score';
+import { ScoreBar } from './score/ScoreBar';
+import { useScore } from './score/store';
 import { LabsPage } from './pages/Labs';
 import { LoginPage } from './pages/Login';
 import { SchemaPage, SchemasPage } from './pages/Schemas';
@@ -38,12 +41,25 @@ export const App = () => (
                     <Route path="api-docs" element={<ApiDocsPage />} />
                     <Route path="labs" element={<LabsPage />} />
                     <Route path="favorites" element={<FavoritesPage />} />
+                    <Route path="score" element={<ScorePage />} />
                     <Route path="*" element={<p>Not found.</p>} />
                 </Route>
             </Routes>
+            {/* outside the routes: recording carries on as you move between pages */}
+            <ScoreBar />
         </BrowserRouter>
     </AuthProvider>
 );
+
+/** "Score" in the nav, with a red dot while recording */
+const ScoreLink = () => {
+    const { recording } = useScore();
+    return (
+        <NavLink to="/score" title={recording ? 'Recording what you play' : undefined}>
+            Score{recording && <span className="rec" aria-label=" (recording)"> ●</span>}
+        </NavLink>
+    );
+};
 
 const Layout = () => {
     const { user, loading } = useAuth();
@@ -58,6 +74,7 @@ const Layout = () => {
                 <NavLink to="/annotations" end>Annotations</NavLink>
                 <NavLink to="/annotation-schemas" end>Schemas</NavLink>
                 <NavLink to="/favorites">Favorites</NavLink>
+                <ScoreLink />
                 <NavLink to="/api-docs">API</NavLink>
                 <NavLink to="/labs" end>Labs</NavLink>
                 <span className="spacer" />

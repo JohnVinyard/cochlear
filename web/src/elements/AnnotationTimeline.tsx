@@ -21,7 +21,7 @@ export const AnnotationTimeline = ({
     duration: number;
     annotations: AnnotationResource[];
     audioViewId: string;
-    onSelected: (annotation: AnnotationResource) => void;
+    onSelected: (annotation: AnnotationResource, timeStamp?: number) => void;
 }) => {
     const ref = useRef<HTMLElement | null>(null);
 
@@ -44,9 +44,9 @@ export const AnnotationTimeline = ({
     useLayoutEffect(() => {
         const el = ref.current;
         if (!el) return;
-        const handler = (e: CustomEvent<{ id: number }>) => {
+        const handler = (e: CustomEvent<{ id: number; timeStamp?: number }>) => {
             const a = annotations.find((x) => x.id === e.detail.id);
-            if (a) onSelected(a);
+            if (a) onSelected(a, e.detail.timeStamp);
         };
         el.addEventListener('annotation-selected', handler);
         return () => el.removeEventListener('annotation-selected', handler);

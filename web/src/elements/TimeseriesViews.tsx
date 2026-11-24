@@ -16,7 +16,7 @@ export const TimeseriesView = ({
     timeseries: TimeseriesData;
     duration: number;
     audioViewId: string;
-    onSelected: (seconds: number) => void;
+    onSelected: (seconds: number, timeStamp?: number) => void;
 }) => {
     const ref = useRef<TimeseriesViewElement | null>(null);
 
@@ -42,7 +42,10 @@ export const TimeseriesView = ({
     useLayoutEffect(() => {
         const el = ref.current;
         if (!el) return;
-        const handler = (e: Event) => onSelected((e as CustomEvent<{ seconds: number }>).detail.seconds);
+        const handler = (e: Event) => {
+            const { seconds, timeStamp } = (e as CustomEvent<{ seconds: number; timeStamp?: number }>).detail;
+            onSelected(seconds, timeStamp);
+        };
         el.addEventListener('timeseries-selected', handler);
         return () => el.removeEventListener('timeseries-selected', handler);
     }, [onSelected]);
@@ -61,7 +64,7 @@ export const SoundTimeseries = ({
 }: {
     sound: SoundResource;
     audioViewId: string;
-    onSelected: (seconds: number) => void;
+    onSelected: (seconds: number, timeStamp?: number) => void;
 }) => {
     const blobs = useFeed<AnnotationResource>(`${sound.links.annotations}?kind=blob&page_size=500`);
     const series = blobs.items.flatMap((a) => {

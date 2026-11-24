@@ -74,7 +74,7 @@ export class VectorLane extends HTMLElement {
                 new CustomEvent('segment-selected', {
                     bubbles: true,
                     composed: true,
-                    detail: { id: s.id, startSeconds: s.start_seconds, durationSeconds: s.duration_seconds },
+                    detail: { id: s.id, startSeconds: s.start_seconds, durationSeconds: s.duration_seconds, timeStamp: e.timeStamp },
                 })
             );
         });

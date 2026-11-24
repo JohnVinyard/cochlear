@@ -9,6 +9,7 @@ import '../elements/vector-lane';
 import { SegmentPlayer } from '../audio/segments';
 import { pcaColors } from './pca';
 import { StarButton } from '../favorites';
+import { recordPlay, registerSound } from '../score/store';
 
 /**
  * Vector annotations on the sound page: a lane per vector schema (coloured by
@@ -59,7 +60,7 @@ const VectorLane = ({
     duration: number;
     audioViewId: string;
     selected: number | null;
-    onSelected: (id: number) => void;
+    onSelected: (id: number, timeStamp?: number) => void;
 }) => {
     const ref = useRef<VectorLaneElement | null>(null);
     useLayoutEffect(() => {
@@ -76,7 +77,10 @@ const VectorLane = ({
     useLayoutEffect(() => {
         const el = ref.current;
         if (!el) return;
-        const handler = (e: Event) => onSelected((e as CustomEvent<{ id: number }>).detail.id);
+        const handler = (e: Event) => {
+            const { id, timeStamp } = (e as CustomEvent<{ id: number; timeStamp?: number }>).detail;
+            onSelected(id, timeStamp);
+        };
         el.addEventListener('segment-selected', handler);
         return () => el.removeEventListener('segment-selected', handler);
     }, [onSelected]);
@@ -93,7 +97,7 @@ export const VectorLanes = ({
     sound: SoundResource;
     audioViewId: string;
     selected: AnnotationResource | null;
-    onSelected: (a: AnnotationResource) => void;
+    onSelected: (a: AnnotationResource, timeStamp?: number) => void;
 }) => {
     const { items, error } = useAll<AnnotationResource>(`${sound.links.annotations}?kind=vector&page_size=500`);
     const lanes = useMemo(() => {
@@ -116,9 +120,9 @@ export const VectorLanes = ({
     }, [items]);
     const byId = useMemo(() => new Map<number, AnnotationResource>(items.map((a) => [a.id, a])), [items]);
     const select = useCallback(
-        (id: number) => {
+        (id: number, timeStamp?: number) => {
             const a = byId.get(id);
-            if (a) onSelected(a);
+            if (a) onSelected(a, timeStamp);
         },
         [byId, onSelected]
     );
@@ -263,10 +267,20 @@ export const SimilarSegments = ({ query }: { query: AnnotationResource }) => {
         return () => worker.terminate();
     }, [results, query.id]);
 
-    const play = useCallback((r: Result) => {
+    const play = useCallback((r: Result, timeStamp?: number) => {
         setSelected(r);
         const start = r.annotation.start_seconds ?? 0;
         const duration = Math.min(r.annotation.duration_seconds ?? MAX_PLAY_SECONDS, MAX_PLAY_SECONDS);
+        registerSound(r.sound);
+        recordPlay({
+            audioUrl: r.sound.audio_url,
+            soundId: r.sound.id,
+            title: r.sound.title,
+            startSeconds: start,
+            durationSeconds: duration,
+            source: 'similar',
+            timeStamp,
+        });
         player.play(r.sound.audio_url, start, duration).catch((e) => setError(e));
     }, []);
 
@@ -274,8 +288,9 @@ export const SimilarSegments = ({ query }: { query: AnnotationResource }) => {
         const el = plot.current;
         if (!el) return;
         const handler = (e: Event) => {
-            const r = results?.[(e as CustomEvent<{ index: number }>).detail.index];
-            if (r) play(r);
+            const { index, timeStamp } = (e as CustomEvent<{ index: number; timeStamp?: number }>).detail;
+            const r = results?.[index];
+            if (r) play(r, timeStamp);
         };
         el.addEventListener('point-selected', handler);
         return () => el.removeEventListener('point-selected', handler);
