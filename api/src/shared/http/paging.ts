@@ -26,7 +26,7 @@ export const renderFeedPage = <T extends { id: number }, R>(
     page: FeedPage<T>,
     render: (item: T) => R
 ) => {
-    const query = { ...(req.query as Record<string, string>) };
+    const query = { ...(req.query as Record<string, string | string[]>) };
     const self = links.href(path, query);
     const last = page.items[page.items.length - 1];
     const next =

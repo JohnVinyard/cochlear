@@ -1,6 +1,7 @@
-import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from 'react-router';
+import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router';
 import { AuthProvider, logOut, useAuth } from './auth';
 import { AnnotationPage, AnnotationsPage } from './pages/Annotations';
+import { ApiDocsPage } from './pages/ApiDocs';
 import { CodecLab } from './pages/CodecLab';
 import { LoginPage } from './pages/Login';
 import { SchemaPage, SchemasPage } from './pages/Schemas';
@@ -32,6 +33,7 @@ export const App = () => (
                     <Route path="users/:userId/annotations" element={<AnnotationsPage />} />
                     <Route path="me" element={<MePage />} />
                     <Route path="api-keys" element={<ApiKeysPage />} />
+                    <Route path="api-docs" element={<ApiDocsPage />} />
                     <Route path="*" element={<p>Not found.</p>} />
                 </Route>
             </Routes>
@@ -41,6 +43,7 @@ export const App = () => (
 
 const Layout = () => {
     const { user, loading } = useAuth();
+    const { pathname } = useLocation();
     if (loading) return <p className="page">Loading…</p>;
     if (!user) return <LoginPage />;
     return (
@@ -50,12 +53,14 @@ const Layout = () => {
                 <NavLink to="/sounds" end>Sounds</NavLink>
                 <NavLink to="/annotations" end>Annotations</NavLink>
                 <NavLink to="/annotation-schemas" end>Schemas</NavLink>
+                <NavLink to="/api-docs">API</NavLink>
                 <span className="spacer" />
                 <NavLink to="/me">{user.email}</NavLink>
                 <NavLink to="/api-keys">API keys</NavLink>
                 <button className="link" onClick={() => logOut()}>Sign out</button>
             </header>
-            <main className="page">
+            {/* the API reference has its own sidebar layout, and wants the whole width */}
+            <main className={pathname.startsWith('/api-docs') ? 'page wide' : 'page'}>
                 <Outlet />
             </main>
         </>

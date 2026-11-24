@@ -6,6 +6,7 @@ import { AnnotationTable, ApiLink, ErrorMessage, LoadMore } from '../components'
 import { AnnotationTimeline } from '../elements/AnnotationTimeline';
 import { AudioView } from '../elements/AudioView';
 import { SoundTimeseries } from '../elements/TimeseriesViews';
+import { SimilarSegments, VectorLanes } from '../vectors/VectorSearch';
 import type { AudioViewElement } from '../elements/web-components';
 
 export const SoundsPage = () => {
@@ -104,6 +105,7 @@ export const SoundPage = () => {
     const annotations = useFeed<AnnotationResource>(`/sounds/${soundId}/annotations?page_size=500`);
     const audioView = useRef<AudioViewElement | null>(null);
     const [view, setView] = useState<'time-series' | 'spectrogram'>('time-series');
+    const [query, setQuery] = useState<AnnotationResource | null>(null);
 
     const play = useCallback(
         (a: AnnotationResource) => {
@@ -122,6 +124,14 @@ export const SoundPage = () => {
             }
         },
         [sound.data]
+    );
+
+    const search = useCallback(
+        (a: AnnotationResource) => {
+            setQuery(a);
+            play(a);
+        },
+        [play]
     );
 
     if (sound.error) return <ErrorMessage error={sound.error} />;
@@ -148,12 +158,14 @@ export const SoundPage = () => {
             </div>
             <AudioView id={`audio-view-${s.id}`} ref={audioView} src={s.audio_url} view={view} />
             <SoundTimeseries sound={s} audioViewId={`audio-view-${s.id}`} onSelected={playFrom} />
+            <VectorLanes sound={s} audioViewId={`audio-view-${s.id}`} selected={query} onSelected={search} />
             <AnnotationTimeline
                 duration={s.duration_seconds}
                 annotations={annotations.items}
                 audioViewId={`audio-view-${s.id}`}
                 onSelected={play}
             />
+            {query && <SimilarSegments key={query.id} query={query} />}
             <h2>Annotations</h2>
             <AddTags sound={s} onCreated={annotations.reload} />
             <ErrorMessage error={annotations.error} />

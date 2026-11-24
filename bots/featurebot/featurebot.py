@@ -35,24 +35,23 @@ Failures:
 from __future__ import annotations
 
 import argparse
-import logging
 import os
 import sys
 import tempfile
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterator, Optional
 
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import botkit  # noqa: E402
 import features  # noqa: E402
-from cochlea_client import ApiError, CochleaClient, State, StateConflict  # noqa: E402
-
-log = logging.getLogger("featurebot")
+from botkit import Fatal, FeedBot, Item, Permanent  # noqa: E402,F401
+from cochlea_client import CochleaClient  # noqa: E402
 
 # Bump when the output changes: a new value starts the feed over, and each
 # sound's annotations are replaced (sync_annotations(prune=True)). A change
@@ -60,17 +59,6 @@ log = logging.getLogger("featurebot")
 # 2: data.timeseries on the chroma and MFCC blobs
 # 3: chroma@2 and mfcc@2: float16, compressed
 FEATURES_VERSION = "3"
-RECENT_FAILURES = 20
-BAD_KEY = ("the API key was rejected (401). If the database was recreated, delete the key file "
-           "(.data/bots/featurebot.key) and restart, to issue a new one.")
-
-
-class Permanent(Exception):
-    """This sound can't be processed; record it and move on"""
-
-
-class Fatal(Exception):
-    """The bot can't continue (e.g. its API key is invalid)"""
 
 
 # ---------------------------------------------------------------------------
@@ -149,48 +137,38 @@ class Options:
     max_backoff_seconds: float = 300
 
 
-class FeatureBot:
+class FeatureBot(FeedBot):
+    name = "featurebot"
+    # the keys its state has always used
+    version_key = "features"
+    cursor_key = "sounds_cursor"
+
     def __init__(self, client: CochleaClient, options: Options,
                  extract: Callable[[Path], features.Features] = default_extract,
                  sleep: Callable[[float], None] = time.sleep):
-        self.client = client
+        super().__init__(client, poll_seconds=options.poll_seconds, backoff_seconds=options.backoff_seconds,
+                         max_backoff_seconds=options.max_backoff_seconds, sleep=sleep)
         self.options = options
         self.extract = extract
-        self.sleep = sleep
-        self.state: State = State({}, "")
-
-    # -- state --------------------------------------------------------------
-
-    def load_state(self) -> None:
-        self.state = self.client.get_state()
-        doc = self.state.document
-        if doc.get("features") != FEATURES_VERSION:
-            if doc:
-                log.info("state is for features %r, not %r: starting the feed over", doc.get("features"),
-                         FEATURES_VERSION)
-            self.state.document = {"features": FEATURES_VERSION, "sounds_cursor": None, "processed": 0,
-                                   "failed": 0, "recent_failures": []}
 
     @property
-    def cursor(self) -> Optional[int]:
-        return self.state.document.get("sounds_cursor")
+    def version(self) -> str:  # type: ignore[override]
+        return FEATURES_VERSION
 
-    def save_state(self, update: Callable[[dict], None]) -> bool:
-        """Applies `update` to the state and writes it. False if someone else wrote it first."""
-        doc = dict(self.state.document)
-        update(doc)
-        try:
-            self.state = self.client.put_state(doc, if_match=self.state.etag or None)
-            return True
-        except StateConflict:
-            log.warning("state was changed elsewhere (another instance, or clear-data); re-reading it")
-            self.load_state()
-            return False
+    def setup(self) -> None:
+        for ref, (kind, dim, description) in features.SCHEMAS.items():
+            self.client.ensure_schema(ref, kind, vector_dim=dim, description=description)
 
-    # -- processing ---------------------------------------------------------
+    def items(self, cursor: Optional[int]) -> Iterator[Item]:
+        for sound in self.client.feed_sounds(low_id=cursor, page_size=100):
+            yield Item(cursor=sound["id"], label=f"sound {sound['id']}", payload=sound)
 
-    def annotate(self, sound: dict) -> int:
-        """Annotates one sound; returns how many annotations were created"""
+    def failure(self, item: Item, error: Exception) -> dict:
+        return {"sound_id": item.payload["id"], "audio_url": item.payload["audio_url"],
+                **super().failure(item, error)}
+
+    def handle(self, item: Item) -> str:
+        sound = item.payload
         duration = sound["duration_seconds"]
         if duration > self.options.max_duration_seconds:
             raise Permanent(f"{duration:.0f}s is longer than --max-duration-seconds "
@@ -198,146 +176,39 @@ class FeatureBot:
         with tempfile.TemporaryDirectory(prefix="featurebot-") as tmp:
             path = fetch(sound["audio_url"], Path(tmp), self.options.mirrors, self.options.max_bytes)
             extracted = self.extract(path)
-        try:
-            bodies = features.annotations(extracted, duration, upload=self.client.upload_blob)
-            # prune: these are all of featurebot's annotations on the sound, so older output goes
-            result = self.client.sync_annotations(sound["id"], bodies, access="*", prune=True)
-        except ApiError as e:
-            if e.status == 401:
-                raise Fatal(BAD_KEY) from e
-            if e.status in (404, 410):
-                raise Permanent(f"the sound was deleted ({e.status})") from e
-            if e.status == 429 or e.status >= 500:
-                raise ConnectionError(str(e)) from e
-            raise Permanent(f"the API rejected the annotations: {e}") from e
-        if result.deleted:
-            log.info("sound %d: replaced %d older annotations", sound["id"], result.deleted)
-        return result.created
-
-    def process(self, sound: dict) -> None:
-        """Annotates a sound, retrying transient errors, and records the outcome"""
-        backoff = self.options.backoff_seconds
-        while True:
-            try:
-                started = time.monotonic()
-                created = self.annotate(sound)
-                log.info("sound %d: %d annotations created (%.1fs)", sound["id"], created,
-                         time.monotonic() - started)
-                failure = None
-                break
-            except Permanent as e:
-                log.warning("sound %d: skipped: %s", sound["id"], e)
-                failure = {"sound_id": sound["id"], "audio_url": sound["audio_url"], "error": str(e),
-                           "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-                break
-            except (ConnectionError, requests.exceptions.RequestException) as e:
-                log.warning("sound %d: %s; retrying in %.0fs", sound["id"], e, backoff)
-                self.sleep(backoff)
-                backoff = min(backoff * 2, self.options.max_backoff_seconds)
-
-        def update(doc: dict) -> None:
-            doc["sounds_cursor"] = sound["id"]
-            if failure:
-                doc["failed"] = doc.get("failed", 0) + 1
-                doc["recent_failures"] = (doc.get("recent_failures", []) + [failure])[-RECENT_FAILURES:]
-            else:
-                doc["processed"] = doc.get("processed", 0) + 1
-
-        self.save_state(update)
-
-    def drain(self, limit: Optional[int] = None) -> int:
-        """Processes every sound after the cursor; returns how many it processed"""
-        done = 0
-        while True:
-            cursor = self.cursor
-            restarted = False
-            for sound in self.client.feed_sounds(low_id=cursor, page_size=100):
-                if limit is not None and done >= limit:
-                    return done
-                self.process(sound)
-                done += 1
-                if self.cursor != sound["id"]:
-                    restarted = True  # the state changed under us: follow its cursor instead
-                    break
-            if not restarted:
-                return done
-
-    def ensure_schemas(self) -> None:
-        for ref, (kind, dim, description) in features.SCHEMAS.items():
-            self.client.ensure_schema(ref, kind, vector_dim=dim, description=description)
-
-    def run(self, once: bool = False, limit: Optional[int] = None) -> None:
-        backoff = self.options.backoff_seconds
-        started = False
-        while True:
-            try:
-                if not started:
-                    self.ensure_schemas()
-                    self.load_state()
-                    log.info("starting after sound %s", self.cursor)
-                    started = True
-                done = self.drain(limit)
-                if once or limit is not None:
-                    log.info("processed %d sounds; stopping", done)
-                    return
-                backoff = self.options.backoff_seconds
-                self.sleep(self.options.poll_seconds)
-                self.load_state()  # picks up a clear-data while idle
-            except ApiError as e:
-                if e.status == 401:
-                    raise Fatal(BAD_KEY) from e
-                if not (e.status == 429 or e.status >= 500):
-                    raise
-                log.warning("API error: %s; retrying in %.0fs", e, backoff)
-            except (ConnectionError, requests.exceptions.RequestException) as e:
-                log.warning("can't reach the API: %s; retrying in %.0fs", e, backoff)
-            self.sleep(backoff)
-            backoff = min(backoff * 2, self.options.max_backoff_seconds)
-            if started:
-                self.load_state()
+        bodies = features.annotations(extracted, duration, upload=self.client.upload_blob)
+        # prune: these are all of featurebot's annotations on the sound, so older output goes
+        result = self.client.sync_annotations(sound["id"], bodies, access="*", prune=True)
+        replaced = f", replaced {result.deleted} older ones" if result.deleted else ""
+        return f"{result.created} annotations created{replaced}"
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
-def parse_args(argv: list[str]) -> argparse.Namespace:
+def parse_args(argv: list[str]) -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
                                 formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    p.add_argument("--api-url", default=os.environ.get("COCHLEA_API_URL", "http://localhost:8080/v1"))
-    p.add_argument("--api-key", default=os.environ.get("COCHLEA_API_KEY"),
-                   help="or COCHLEA_API_KEY, or a file in COCHLEA_API_KEY_FILE")
+    botkit.add_common_args(p)
     p.add_argument("--mirror", type=Mirror.parse, action="append", default=[],
                    help="PREFIX=PATH_TEMPLATE; repeatable. Also FEATUREBOT_MIRRORS (';'-separated).")
-    p.add_argument("--once", action="store_true", help="process what's in the feed, then exit")
-    p.add_argument("--limit", type=int, help="process at most N sounds, then exit")
-    p.add_argument("--poll-seconds", type=float, default=float(os.environ.get("FEATUREBOT_POLL_SECONDS", 30)))
     p.add_argument("--max-duration-seconds", type=float, default=3 * 3600, help="skip longer sounds")
     args = p.parse_args(argv)
-    if not args.api_key and os.environ.get("COCHLEA_API_KEY_FILE"):
-        args.api_key = Path(os.environ["COCHLEA_API_KEY_FILE"]).read_text().strip()
-    if not args.api_key:
-        p.error("an API key is required: --api-key, COCHLEA_API_KEY or COCHLEA_API_KEY_FILE")
     args.mirror += [Mirror.parse(m) for m in os.environ.get("FEATUREBOT_MIRRORS", "").split(";") if m.strip()]
-    return args
+    return p, args
 
 
 def main(argv: list[str]) -> int:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", stream=sys.stdout)
-    args = parse_args(argv)
-    client = CochleaClient(args.api_url, args.api_key)
+    botkit.configure_logging()
+    p, args = parse_args(argv)
+    client = botkit.client_from_args(p, args)
     options = Options(mirrors=args.mirror, poll_seconds=args.poll_seconds,
                       max_duration_seconds=args.max_duration_seconds)
+    bot = FeatureBot(client, options)
     for m in options.mirrors:
-        log.info("mirror: %s -> %s", m.prefix, m.template)
-    try:
-        FeatureBot(client, options).run(once=args.once, limit=args.limit)
-    except Fatal as e:
-        log.error("%s", e)
-        return 2
-    except KeyboardInterrupt:
-        return 130
-    return 0
+        bot.log.info("mirror: %s -> %s", m.prefix, m.template)
+    return botkit.run_main(bot, args)
 
 
 if __name__ == "__main__":

@@ -24,10 +24,13 @@ The design background is in `Audio Annotations API and App.md`.
 
 ## API
 
-- [ ] Search endpoints. The indices exist; the routes don't.
-  - [ ] Vector similarity search per vector schema. Indices are created by hand (`api/sql/README.md`). Queries must use the `vector_value::vector(N)` cast and the `schema_id = <id>` condition.
-  - [ ] Full-text search over `text` annotations (`text_tsv`)
-  - [ ] Key/value search over `kv` annotations (`kv @> ...`)
+- [ ] Search, next steps (`q`, `prop` and vector search exist):
+  - [ ] Relevance-ranked full-text search (`ts_rank`, using the A/B/C weights already in `search_tsv`). It can't be a feed (relevance order can't be paged by id), so a separate endpoint with its own paging
+  - [ ] Range and inequality conditions on JSON (`note>60`). The GIN index only does equality; ranges need per-key B-tree expression indices, e.g. declared by the schema (like vector indices are per schema)
+  - [ ] Case-insensitive `prop` matching. Not indexable on arbitrary JSON; today `q` is the fuzzy route. Could be per-key expression indices too
+  - [ ] Full-text over `data` (JSON metadata on any annotation), and prop filters on it
+  - [ ] Several numeric `prop` filters at once are slower (~190 ms on MusicNet notes): each tries four forms (number or string, alone or in an array). Fine for now
+  - [ ] Production: adding `search_tsv` rewrote the table under a lock (73 s for 2.5M rows locally). For a big live table, add a nullable column, backfill in batches, then index concurrently
 - [ ] Tombstone feed, so bots can retract derived annotations when a source annotation or sound is deleted. Today deletes are soft and simply disappear from feeds.
 - [ ] Idempotency for annotation batches (e.g. an `Idempotency-Key` header). Sounds are already idempotent via unique `audio_url`, but a retried annotation POST creates duplicates.
 - [ ] A deleted sound's `audio_url` stays reserved: re-registering it returns `409` with a `Location` that then returns `410`. Decide whether re-registration should be allowed.
@@ -40,6 +43,8 @@ The design background is in `Audio Annotations API and App.md`.
 - [ ] Production config: CORS origins, `PUBLIC_BASE_URL`, real GCS credentials, Cloud SQL connection
 
 ## Web app
+
+- [ ] Look at the API reference (`/api-docs`) in a browser, including "Try it" with a copied sign-in token; and see whether Elements' styles need adjusting for the app's dark mode
 
 - [ ] Annotation editors for every kind. Only tags exist today; also needed: text, kv, vector and blob (with upload).
 - [ ] Access picker that shares with specific users. Today it's only public or private.
@@ -79,8 +84,17 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 
 ## Bots
 
-- [ ] The next bot: summarise featurebot's chroma and MFCC frames over its onset segments, as vector annotations (and then a pgvector index per vector schema, for search)
-- [ ] Blob URLs are built for the host (`BLOB_PUBLIC_URL_TEMPLATE`, `localhost:4443`), so bots in containers can't download them. Rebase them like API links, or give bots an internal URL.
+- [ ] A pre-trained audio embedding bot, for better similarity search than segmentbot's chroma + MFCC (which exists to exercise the pipeline). The pipeline already fits it: a `botkit.FeedBot` with its own vector schema gets an index, `/similar`, a lane and the 3-d view automatically. To decide:
+    - **Dimension:** schemas are capped at 2000 dims so they stay indexable. Most audio embeddings (512–1280) fit; truncate larger ones (matryoshka-style, if the model supports it) rather than raising the cap
+    - **Windowing:** models embed fixed windows (~1 s, or ~10 s), not onset segments. Fixed windows with a hop fit naturally (they're just segments), but overlapping windows overdraw each other in one lane; follow the sound feed rather than the onset feed
+    - **Distance:** cosine suits most embeddings, and is what every schema uses today (see the per-schema metric item)
+    - **Runtime:** its own image (torch or onnxruntime) rather than growing `docker/bots.Dockerfile`; maybe GPU access in compose; a cache for model weights
+    - **Throughput:** much slower than librosa, so batch each sound's windows, and read audio from the local mirror (`AUDIO_DATA_DIR`), not S3
+- [ ] Look at the vector lanes, the search panel and the 3-d plot in a browser: the search, t-SNE and range-request playback are tested, but nobody has seen or heard them yet
+- [ ] segmentbot: follow deletions (a deleted onset's vector stays); maybe drop MFCC c0 (loudness) from the vector, or weight the halves
+- [ ] Similarity search by an arbitrary vector (`POST /annotation-schemas/{ref}/search`), not just by an existing annotation; and a per-schema distance metric (cosine for all today)
+- [ ] Lazy-load the search panel, so three.js (most of the web bundle's ~1 MB) only loads when it's used
+- [ ] Barnes-Hut t-SNE (or UMAP) for more than ~1000 points; exact t-SNE is O(N²)
 - [ ] featurebot: tell transient decode problems from permanent ones (today any decode error skips the sound for good)
 - [ ] A way to re-run a bot over particular sounds (e.g. after fixing a failure), short of resetting its whole state
 - [ ] Bot liveness: surface each bot's state (cursor, failures) in the web app, e.g. on its user page
@@ -108,6 +122,10 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [x] Codec draft 0.2: `defs` and `$ref` (sounds, envelopes, patterns; instance paths plus `source` pointers; errors located in the definition), reverse-DNS extension types, `requires`; `drums.json` rewritten around patterns (172 KB → 9 KB); the viewer shows references and highlights every use of a definition
 
 - [x] User state documents (`GET`/`PUT /v1/users/me/state`, ETag/If-Match, reset by clear-data), and `client.get_state`/`put_state`
+- [x] Annotation search: `q` (full-text over tags, prose and JSON string values; a stored `search_tsv` column with a GIN index) and `prop=key:value` (exact JSON matching via the kv index) on every annotation feed; in the Python client (`q=`, `props=`) and on the web app's Annotations page
+- [x] API reference in the web app (`/api-docs`, "API" in the nav): Stoplight Elements 9.0.29 from a CDN, lazily loaded, rendering `/v1/openapi.json`
+- [x] MusicNet's bucket CORS allows `Range` (and exposes `Content-Range`), so segment playback uses range requests even where browsers preflight them
+- [x] Vector search: a per-schema HNSW index for every vector schema (created with the schema, reconciled at startup), `GET /annotations/{id}/similar`; segmentbot (25-d chroma + MFCC per onset); botkit (the shared bot loop); vector lanes on the sound page, a 3-d t-SNE (from scratch, in a worker) of the neighbours with three.js, and segment playback by HTTP range requests
 - [x] Time series convention for `.npz` blob annotations (`docs/annotation-conventions.md`, `TimeseriesData`); `<timeseries-view>` (canvas heatmap/line, dependency-free `.npz` reader) on the sound page; a `kind` filter on annotation feeds; `sync_annotations(prune=True)`; featurebot v2 writes the convention
 - [x] featurebot (`bots/featurebot`): follows the sound feed; onsets, frame-level chroma and MFCC blobs; a compose service with its own key and local audio mirrors
 - [x] Python client: API links (`next`) are followed on the client's own base URL, so it works inside docker compose

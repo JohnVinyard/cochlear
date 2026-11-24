@@ -4,7 +4,8 @@
  */
 export interface Links {
     readonly root: string;
-    href(path: string, query?: Record<string, string | number | undefined | null>): string;
+    /** Array values become repeated parameters (`prop=a:x&prop=b:y`) */
+    href(path: string, query?: Record<string, string | number | string[] | undefined | null>): string;
 }
 
 export const createLinks = (publicBaseUrl: string, prefix = '/v1'): Links => {
@@ -14,7 +15,9 @@ export const createLinks = (publicBaseUrl: string, prefix = '/v1'): Links => {
         href(path, query) {
             const url = new URL(root + path);
             for (const [k, v] of Object.entries(query ?? {})) {
-                if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
+                for (const item of Array.isArray(v) ? v : [v]) {
+                    if (item !== undefined && item !== null && item !== '') url.searchParams.append(k, String(item));
+                }
             }
             return url.toString();
         },

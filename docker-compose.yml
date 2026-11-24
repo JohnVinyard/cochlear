@@ -30,6 +30,27 @@ x-db-env: &db-env
   PGPASSWORD: cochlea
   PGDATABASE: cochlea
 
+# every bot in bots/: one image, the repo mounted read-only
+x-bot: &bot
+  build:
+    context: .
+    dockerfile: docker/bots.Dockerfile
+  image: cochlea-bots-dev
+  volumes:
+    - ./:/app:ro
+  depends_on:
+    api:
+      condition: service_healthy
+    bot-keys:
+      condition: service_completed_successfully
+  # an invalid key exits non-zero (2); don't retry that forever
+  restart: on-failure:3
+
+x-bot-env: &bot-env
+  COCHLEA_API_URL: http://api:8080/v1
+  # blob URLs are built for the host; inside compose the store is gcs:4443
+  COCHLEA_URL_REWRITES: "http://localhost:${GCS_PORT:-4443}/=http://gcs:4443/"
+
 services:
   postgres:
     image: pgvector/pgvector:pg17
@@ -149,11 +170,11 @@ services:
       - cargo_registry:/usr/local/cargo/registry
       - cargo_target:/cargo-target
 
-  # one-shot: creates the featurebot user and an API key for it, the first
-  # time only (kept in .data/bots/featurebot.key; see bots/featurebot/issue-key.sh)
-  featurebot-key:
+  # one-shot: makes sure every bot has a user and an API key, issued the
+  # first time only and kept in .data/bots/<name>.key (bots/issue-keys.sh)
+  bot-keys:
     <<: *node
-    command: sh bots/featurebot/issue-key.sh
+    command: sh bots/issue-keys.sh
     environment:
       <<: *db-env
     depends_on:
@@ -164,25 +185,23 @@ services:
   # Audio under AUDIO_DATA_DIR (see .env.example) is read from disk instead of
   # being downloaded.
   featurebot:
-    build:
-      context: .
-      dockerfile: docker/featurebot.Dockerfile
-    image: cochlea-featurebot-dev
+    <<: *bot
     command: python bots/featurebot/featurebot.py
     volumes:
       - ./:/app:ro
       - ${AUDIO_DATA_DIR:-./.data/audio-data}:/audio:ro
     environment:
-      COCHLEA_API_URL: http://api:8080/v1
+      <<: *bot-env
       COCHLEA_API_KEY_FILE: /app/.data/bots/featurebot.key
       FEATUREBOT_MIRRORS: "https://music-net.s3.us-east-1.amazonaws.com/=/audio/musicnet/train_data/{}.wav;https://music-net.s3.us-east-1.amazonaws.com/=/audio/musicnet/test_data/{}.wav"
-    depends_on:
-      api:
-        condition: service_healthy
-      featurebot-key:
-        condition: service_completed_successfully
-    # an invalid key exits non-zero (2); don't retry that forever
-    restart: on-failure:3
+
+  # follows featurebot's onsets, giving each a vector for search (bots/segmentbot)
+  segmentbot:
+    <<: *bot
+    command: python bots/segmentbot/segmentbot.py
+    environment:
+      <<: *bot-env
+      COCHLEA_API_KEY_FILE: /app/.data/bots/segmentbot.key
 
 volumes:
   cargo_registry:

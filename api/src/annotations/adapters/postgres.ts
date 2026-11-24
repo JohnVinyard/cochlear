@@ -1,9 +1,10 @@
 import type { AnnotationKind, SchemaRef } from '@cochlea/shared';
 import type pg from 'pg';
 import { executeCommand, executeQuery, executeQueryOne, withTransaction } from '../../shared/db/pool';
+import { cosineDistance, vectorPredicate } from '../../shared/db/vectors';
 import { acquireFeedLock } from '../../shared/feed';
 import type { AnnotationId, AnnotationSchemaId, SoundId, UserId } from '../../shared/ids';
-import type { Access, Annotation, AnnotationsPersistence, AnnotationValue } from '../domain';
+import type { Access, Annotation, AnnotationsPersistence, AnnotationValue, SimilarAnnotation } from '../domain';
 
 interface AnnotationRow {
     id: number;
@@ -29,8 +30,8 @@ interface AnnotationRow {
 }
 
 /** `$VIEWER` is replaced with the positional parameter holding the viewer's id */
-const SELECT = `
-    select a.id, a.sound_id, a.schema_id, s.name || '@' || s.version as schema_ref, s.kind,
+const COLUMNS = `
+    a.id, a.sound_id, a.schema_id, s.name || '@' || s.version as schema_ref, s.kind,
            a.created_by, a.created_at, a.start_seconds, a.duration_seconds,
            a.tags, a.text_value, a.vector_value::real[] as vector_value, a.kv,
            a.blob_url, a.blob_content_type, a.data, a.is_public, a.deleted_at,
@@ -38,9 +39,13 @@ const SELECT = `
                as access_user_ids,
            (a.is_public or a.created_by = $VIEWER or exists (
                select 1 from annotation_access x where x.annotation_id = a.id and x.user_id = $VIEWER
-           )) as visible
+           )) as visible`;
+
+const FROM = `
     from annotations a
     join annotation_schemas s on s.id = a.schema_id`;
+
+const SELECT = `select ${COLUMNS} ${FROM}`;
 
 const toValue = (row: AnnotationRow): AnnotationValue => {
     switch (row.kind) {
@@ -149,7 +154,29 @@ export const buildAnnotationsPersistence = (pool: pg.Pool): AnnotationsPersisten
         return { status: row.deleted_at ? 'deleted' : 'found', annotation: toAnnotation(row), visible: row.visible };
     },
 
-    async feed(viewer, { lowId, pageSize, soundId, createdBy, schemaId, kind, tags, timeRange }) {
+    async feed(viewer, { lowId, pageSize, soundId, createdBy, schemaId, kind, tags, timeRange, q, properties }) {
+        const params: unknown[] = [
+            viewer,
+            lowId ?? 0,
+            soundId,
+            createdBy,
+            schemaId,
+            tags,
+            timeRange?.start ?? null,
+            timeRange?.end ?? null,
+            pageSize + 1,
+            kind,
+            q,
+        ];
+        // each property filter: the kv contains any one of its candidates. `kv is not null`
+        // matches the kv index's predicate, so the planner can use it.
+        const propertyConditions = properties.map((p) => {
+            const alternatives = p.candidates.map((candidate) => {
+                params.push(JSON.stringify(candidate));
+                return `a.kv @> $${params.length}::jsonb`;
+            });
+            return `and a.kv is not null and (${alternatives.join(' or ')})`;
+        });
         const rows = await executeQuery<AnnotationRow>(
             pool,
             `${SELECT.replaceAll('$VIEWER', '$1')}
@@ -165,22 +192,63 @@ export const buildAnnotationsPersistence = (pool: pg.Pool): AnnotationsPersisten
                and ($7::float8 is null or a.start_seconds is null
                     or (a.start_seconds <= $8 and a.start_seconds + a.duration_seconds >= $7))
                and ($10::annotation_kind is null or s.kind = $10)
+               and ($11::text is null or (a.search_tsv <> ''::tsvector
+                    and a.search_tsv @@ websearch_to_tsquery('english', $11)))
+               ${propertyConditions.join('\n               ')}
              order by a.id
              limit $9`,
-            [
-                viewer,
-                lowId ?? 0,
-                soundId,
-                createdBy,
-                schemaId,
-                tags,
-                timeRange?.start ?? null,
-                timeRange?.end ?? null,
-                pageSize + 1,
-                kind,
-            ]
+            params
         );
         return { items: rows.slice(0, pageSize).map(toAnnotation), hasMore: rows.length > pageSize };
+    },
+
+    async nearest(viewer, { schemaId, vectorDim, vector, limit, excludeSoundId }) {
+        type Row = AnnotationRow & {
+            distance: number;
+            sound_title: string | null;
+            sound_audio_url: string;
+            sound_duration_seconds: number;
+        };
+        return withTransaction(pool, async (tx) => {
+            // With filters (visibility, deletion), an HNSW scan can run out of
+            // candidates before it has `limit` results; iterative scans keep
+            // going. relaxed_order returns them only roughly in order, so the
+            // outer query sorts them.
+            await executeCommand(tx, 'set local hnsw.iterative_scan = relaxed_order');
+            await executeCommand(tx, `set local hnsw.ef_search = ${Math.min(1000, Math.max(40, limit))}`);
+            const distance = cosineDistance(vectorDim, '$2', 'a.');
+            const rows = await executeQuery<Row>(
+                tx,
+                `with nearest as materialized (
+                     select ${COLUMNS.replaceAll('$VIEWER', '$1')}, ${distance} as distance,
+                            snd.title as sound_title, snd.audio_url as sound_audio_url,
+                            snd.duration_seconds as sound_duration_seconds
+                     ${FROM}
+                     join sounds snd on snd.id = a.sound_id and snd.deleted_at is null
+                     where ${vectorPredicate(schemaId, 'a.')}
+                       and a.deleted_at is null
+                       and (a.is_public or a.created_by = $1 or exists (
+                           select 1 from annotation_access x where x.annotation_id = a.id and x.user_id = $1))
+                       and ($4::bigint is null or a.sound_id <> $4)
+                     order by ${distance}
+                     limit $3
+                 )
+                 select * from nearest order by distance, id`,
+                [viewer, `[${vector.join(',')}]`, limit, excludeSoundId]
+            );
+            return rows.map(
+                (row): SimilarAnnotation => ({
+                    annotation: toAnnotation(row),
+                    distance: row.distance,
+                    sound: {
+                        id: row.sound_id as SoundId,
+                        title: row.sound_title,
+                        audioUrl: row.sound_audio_url,
+                        durationSeconds: row.sound_duration_seconds,
+                    },
+                })
+            );
+        });
     },
 
     async markDeleted(id, deletedBy) {

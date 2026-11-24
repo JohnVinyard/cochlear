@@ -158,6 +158,17 @@ export interface BlobRef {
     content_type: string;
 }
 
+/** GET /annotations/{id}/similar */
+export interface SimilarAnnotationsResource {
+    items: {
+        /** Cosine distance to the query annotation's vector: 0 is identical */
+        distance: number;
+        annotation: AnnotationResource;
+        /** Enough of the annotation's sound to label and play it */
+        sound: { id: number; title: string | null; audio_url: string; duration_seconds: number; links: Links };
+    }[];
+}
+
 export interface AnnotationResource {
     id: AnnotationId;
     created_at: string;

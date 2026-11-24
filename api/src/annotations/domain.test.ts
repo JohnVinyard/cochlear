@@ -9,6 +9,7 @@ import {
     type AnnotationInput,
     type AnnotationsPersistence,
     buildAnnotationsDomain,
+    parsePropertyFilter,
     normalizeAccess,
     validateSegment,
     validateValue,
@@ -38,6 +39,7 @@ const sound = { id: 1 as SoundId, durationSeconds: 10 } as Sound;
 const setup = (soundLookup: SoundLookup = { status: 'found', sound }) => {
     const stored: Annotation[] = [];
     const deleted = new Set<number>();
+    const nearestQueries: Parameters<AnnotationsPersistence['nearest']>[1][] = [];
     const persistence: AnnotationsPersistence = {
         async insertBatch(createdBy, soundId, annotations) {
             const created = annotations.map((a, i) => ({
@@ -61,6 +63,10 @@ const setup = (soundLookup: SoundLookup = { status: 'found', sound }) => {
         },
         feed: async () => ({ items: stored, hasMore: false }),
         markDeleted: async (id) => void deleted.add(id),
+        async nearest(_viewer, query) {
+            nearestQueries.push(query);
+            return [];
+        },
     };
     const domain = buildAnnotationsDomain(persistence, {
         schemas: {
@@ -69,6 +75,7 @@ const setup = (soundLookup: SoundLookup = { status: 'found', sound }) => {
                 if (unknown.length) throw new InvalidRequest([`unknown ${unknown}`]);
                 return SCHEMAS;
             },
+            getById: async (id) => [...SCHEMAS.values()].find((s) => s.id === id) ?? null,
         },
         sounds: { lookupSound: async () => soundLookup },
         users: {
@@ -81,7 +88,7 @@ const setup = (soundLookup: SoundLookup = { status: 'found', sound }) => {
                 ? []
                 : ['data is missing required fields'],
     });
-    return { domain, stored };
+    return { domain, stored, nearestQueries };
 };
 
 const tagsInput = (extra: Partial<AnnotationInput> = {}): AnnotationInput => ({
@@ -185,5 +192,58 @@ describe('annotations', () => {
         await expect(domain.deleteAnnotation(other, sharedOne!.id)).rejects.toThrow(PermissionDenied);
         await domain.deleteAnnotation(actor, sharedOne!.id);
         await expect(domain.getAnnotation(other, sharedOne!.id)).rejects.toThrow(Gone);
+    });
+
+    it('searches only vector annotations, within their own schema', async () => {
+        const { domain, nearestQueries } = setup();
+        const actor = firebasePrincipal(1);
+        const [vector, tags] = await domain.createAnnotations(actor, sound.id, [
+            { schema: 'vec@1', vector: [1, 2, 3], access: { type: 'public' } },
+            { schema: 'tags@1', tags: ['x'], access: { type: 'public' } },
+        ]);
+        await domain.similarAnnotations(actor, vector!.id, { limit: 10, excludeSameSound: true });
+        expect(nearestQueries).toEqual([
+            { schemaId: vector!.schemaId, vectorDim: 3, vector: [1, 2, 3], limit: 10, excludeSoundId: sound.id },
+        ]);
+        await expect(domain.similarAnnotations(actor, tags!.id, { limit: 10, excludeSameSound: false })).rejects.toThrow(
+            InvalidRequest
+        );
+        await expect(domain.similarAnnotations(actor, vector!.id, { limit: 0, excludeSameSound: false })).rejects.toThrow(
+            InvalidRequest
+        );
+        await expect(domain.similarAnnotations(firebasePrincipal(9, []), vector!.id, { limit: 1, excludeSameSound: false }))
+            .rejects.toThrow(PermissionDenied);
+    });
+
+    describe('property filters (prop=key:value)', () => {
+        it('match a string, or a value of the type the text reads as, or an array element', () => {
+            expect(parsePropertyFilter('instrument_name:Piano').candidates).toEqual([
+                { instrument_name: 'Piano' },
+                { instrument_name: ['Piano'] },
+            ]);
+            expect(parsePropertyFilter('note:60').candidates).toEqual([
+                { note: '60' },
+                { note: ['60'] },
+                { note: 60 },
+                { note: [60] },
+            ]);
+            expect(parsePropertyFilter('ok:true').candidates).toContainEqual({ ok: true });
+            expect(parsePropertyFilter('gone:null').candidates).toContainEqual({ gone: null });
+            expect(parsePropertyFilter('n:1.5e3').candidates).toContainEqual({ n: 1500 });
+            expect(parsePropertyFilter('n:007').candidates).toHaveLength(2); // not a JSON number
+        });
+
+        it('reach into nested objects, and keep colons in values', () => {
+            const f = parsePropertyFilter('meta.source:http://x');
+            expect(f.path).toEqual(['meta', 'source']);
+            expect(f.candidates[0]).toEqual({ meta: { source: 'http://x' } });
+            expect(parsePropertyFilter('empty:').candidates[0]).toEqual({ empty: '' });
+        });
+
+        it('reject malformed filters', () => {
+            for (const bad of ['no-colon', ':value', 'a..b:x', `k:${'x'.repeat(600)}`]) {
+                expect(() => parsePropertyFilter(bad)).toThrow(InvalidRequest);
+            }
+        });
     });
 });

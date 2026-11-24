@@ -19,6 +19,19 @@ describe('openapi spec', () => {
         expect(spec.servers[0].url).toMatch(/\/v1$/);
     });
 
+    it('groups every operation under exactly one declared tag (a resource)', async () => {
+        const spec = (await TestClient.anonymous().get('/openapi.json')).body;
+        const declared = new Set(spec.tags.map((t: { name: string }) => t.name));
+        const untagged: string[] = [];
+        for (const [path, item] of Object.entries<Record<string, { tags?: string[] }>>(spec.paths)) {
+            for (const method of ['get', 'put', 'post', 'patch', 'delete']) {
+                const tags = item[method]?.tags;
+                if (item[method] && !(tags?.length === 1 && declared.has(tags[0]))) untagged.push(`${method} ${path}`);
+            }
+        }
+        expect(untagged).toEqual([]);
+    });
+
     it('describes only routes that exist', async () => {
         const spec = (await TestClient.anonymous().get('/openapi.json')).body;
         const user = await newUser();

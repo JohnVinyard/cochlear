@@ -15,7 +15,7 @@ What's done and what's next is in [`TODO.md`](TODO.md).
 | `clients/python/` | Python client |
 | `codec/` | An experimental JSON audio codec: spec, schemas, a Rust/WebAssembly decoder (see [`codec/README.md`](codec/README.md)) |
 | `integrations/` | Dataset ingestion scripts (e.g. MusicNet), each run as its own bot user |
-| `bots/` | Long-running bots that follow feeds and annotate (e.g. `featurebot`: onsets, chroma, MFCCs) |
+| `bots/` | Long-running bots that follow feeds and annotate: `featurebot` (onsets, chroma, MFCCs), `segmentbot` (vectors for search) |
 | `docs/` | Conventions, e.g. [time series blobs](docs/annotation-conventions.md) that the web app can draw |
 | `firebase/` | Firebase auth emulator image |
 | `docker/` | Development images |
@@ -42,6 +42,7 @@ These are thin wrappers around `docker compose`, which you can also use directly
 |---|---|
 | web app | http://localhost:5173 (sign up with any email; it's the emulator) |
 | API | http://localhost:8080/v1 (spec at `/v1/openapi.json`) |
+| API reference | http://localhost:5173/api-docs ("API" in the nav; Stoplight Elements, from the spec) |
 | firebase emulator UI | http://localhost:4000 |
 | postgres | `localhost:5432` (user, password and database are all `cochlea`) |
 | fake GCS | http://localhost:4443 |
@@ -60,6 +61,25 @@ working through whatever's there as soon as the stack is up
 ([`bots/featurebot`](bots/featurebot/README.md)). Point `AUDIO_DATA_DIR` in
 `.env` at local copies of datasets, so it reads their audio from disk rather
 than downloading it.
+
+### Searching annotations
+
+Every annotation feed (`/annotations`, `/sounds/{id}/annotations`,
+`/users/{id}/annotations`) takes, besides `schema`, `kind`, `tags` and
+`created_by`:
+
+- `q`: full-text search over tags, prose and the string values of JSON
+  annotations, in web-search syntax: `q=cello`, `q="piano quintet"`,
+  `q=cello -viola`, `q=bach or handel`. English stemming, case-insensitive.
+- `prop=key:value`: exact matches on JSON (kv) annotations, repeated for
+  several (all must hold): `prop=instrument_name:Piano&prop=note:60`. Dotted
+  keys reach nested objects; a value also matches as a number, boolean or null
+  when it reads as one, and as an element of an array. Case-sensitive.
+
+Both are filters on the feed: results stay oldest-first, and page with
+`low_id` like any feed. The design, and its limits (no ranges, no
+case-insensitive `prop`, no relevance ranking yet), are in
+`api/sql/0005.annotation_search.sql` and `TODO.md`.
 
 ### Talking to the API
 
@@ -124,9 +144,12 @@ yarn test-unit       # domain unit tests
 yarn test-api        # full-stack API tests; requires `docker compose up`
 yarn arch-test       # clean-architecture dependency rules
 yarn ready           # all of the above
-.venv/bin/pytest clients/python/tests integrations bots   # python client, integrations and bots
+yarn test-python     # python client, integrations and bots (needs the .venv, with librosa for featurebot)
 yarn test-codec      # codec: cargo test, and the examples against the JSON schemas (needs Rust)
+yarn test-all        # everything: ready, test-codec and test-python
 ```
+
+`.venv` setup: `python3 -m venv .venv && .venv/bin/pip install -e 'clients/python[dev]' -r bots/featurebot/requirements.txt`.
 
 The API tests never start the stack themselves. They sign up fresh emulator
 users, and reach Postgres directly only to grant roles.

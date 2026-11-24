@@ -65,6 +65,15 @@ export interface AnnotationSchemasPersistence {
     getByRefs(refs: { name: string; version: number }[]): Promise<AnnotationSchema[]>;
     getById(id: AnnotationSchemaId): Promise<AnnotationSchema | null>;
     feed(request: FeedRequest<AnnotationSchemaId>): Promise<FeedPage<AnnotationSchema>>;
+    vectorSchemas(): Promise<AnnotationSchema[]>;
+    /** Creates the schema's vector index (see shared/db/vectors.ts) if it's missing or broken */
+    ensureVectorIndex(schema: AnnotationSchema): Promise<'exists' | 'created'>;
+    /**
+     * ensureVectorIndex, in the background: building one scans the whole
+     * annotations table, which takes a while once it's big. Failures are
+     * logged; ensureVectorIndexes at startup retries them.
+     */
+    scheduleVectorIndex(schema: AnnotationSchema): void;
 }
 
 /** Checks that a JSON schema is itself valid;  returns error messages */
@@ -85,6 +94,12 @@ export interface AnnotationSchemasDomain {
     resolveRefs(refs: readonly string[]): Promise<Map<string, AnnotationSchema>>;
     /** Internal (no authorization) */
     getById(id: AnnotationSchemaId): Promise<AnnotationSchema | null>;
+    /**
+     * Internal: makes sure every vector schema has its search index (they're
+     * created along with the schema; this catches older schemas, and indices
+     * whose build was interrupted). Returns the refs of the ones it created.
+     */
+    ensureVectorIndexes(): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +132,9 @@ export const buildAnnotationSchemasDomain = (
         if (result.status === 'notOwner') {
             throw new PermissionDenied(`only the owner of schema "${schema.name}" may publish new versions`);
         }
+        // every vector schema is searchable: it gets its own index. Until that's built,
+        // searches still work (by sequential scan), just more slowly.
+        if (result.schema.kind === 'vector') persistence.scheduleVectorIndex(result.schema);
         return result.schema;
     },
 
@@ -144,4 +162,12 @@ export const buildAnnotationSchemasDomain = (
     },
 
     getById: (id) => persistence.getById(id),
+
+    async ensureVectorIndexes() {
+        const created: string[] = [];
+        for (const schema of await persistence.vectorSchemas()) {
+            if ((await persistence.ensureVectorIndex(schema)) === 'created') created.push(schemaRef(schema));
+        }
+        return created;
+    },
 });

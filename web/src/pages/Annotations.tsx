@@ -14,9 +14,13 @@ export const AnnotationsPage = () => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
         const next = new URLSearchParams();
-        for (const key of ['schema', 'tags']) {
+        for (const key of ['q', 'schema', 'tags']) {
             const v = String(data.get(key) ?? '').trim();
             if (v) next.set(key, v);
+        }
+        // one prop parameter per line: key:value
+        for (const line of String(data.get('prop') ?? '').split('\n')) {
+            if (line.trim()) next.append('prop', line.trim());
         }
         setSearch(next);
     };
@@ -24,10 +28,26 @@ export const AnnotationsPage = () => {
     return (
         <>
             <h1>{soundId ? `Annotations of sound ${soundId}` : userId ? `Annotations by user ${userId}` : 'Annotations'}</h1>
-            <form className="row panel" onSubmit={filter}>
-                <input name="schema" placeholder="schema, e.g. tags@1" defaultValue={search.get('schema') ?? ''} />
-                <input name="tags" placeholder="tags (all of), comma separated" defaultValue={search.get('tags') ?? ''} />
-                <button type="submit">Filter</button>
+            <form className="panel search" onSubmit={filter}>
+                <div className="row">
+                    <input
+                        name="q"
+                        className="grow"
+                        placeholder='search tags, text and JSON values: words, "a phrase", -excluded, or'
+                        defaultValue={search.get('q') ?? ''}
+                    />
+                    <button type="submit">Search</button>
+                </div>
+                <div className="row">
+                    <input name="schema" placeholder="schema, e.g. musicnet-note@1" defaultValue={search.get('schema') ?? ''} />
+                    <input name="tags" placeholder="tags (all of), comma separated" defaultValue={search.get('tags') ?? ''} />
+                </div>
+                <textarea
+                    name="prop"
+                    rows={2}
+                    placeholder={'JSON properties, one key:value per line (exact, case-sensitive), e.g.\ninstrument_name:Piano'}
+                    defaultValue={search.getAll('prop').join('\n')}
+                />
             </form>
             <ErrorMessage error={feed.error} />
             <AnnotationTable items={feed.items} />

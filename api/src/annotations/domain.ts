@@ -45,6 +45,29 @@ export interface Annotation {
     access: Access;
 }
 
+/** What a search result needs to know about its sound, e.g. to play it */
+export interface SoundSummary {
+    id: SoundId;
+    title: string | null;
+    audioUrl: string;
+    durationSeconds: number;
+}
+
+export interface SimilarAnnotation {
+    annotation: Annotation;
+    /** Cosine distance to the query: 0 is identical, 2 is opposite */
+    distance: number;
+    sound: SoundSummary;
+}
+
+export interface SimilarityRequest {
+    limit: number;
+    /** Leave out the query's own sound, e.g. to find similar moments elsewhere */
+    excludeSameSound: boolean;
+}
+
+export const MAX_SIMILAR = 500;
+
 /** An annotation that passed validation and is ready to be stored */
 export type ValidAnnotation = Omit<Annotation, 'id' | 'createdAt' | 'createdBy' | 'soundId'>;
 
@@ -68,10 +91,51 @@ export interface AnnotationFeedRequest extends FeedRequest<AnnotationId> {
     schema: string | null;
     /** Only annotations whose schema is of this kind, e.g. blobs */
     kind: AnnotationKind | null;
+    /**
+     * Full-text search (web-search syntax: words, "phrases", -not, or) over
+     * tags, prose and the string values of JSON annotations
+     */
+    q: string | null;
+    /** `key:value` conditions on JSON (kv) annotations, all of which must hold; see parsePropertyFilter */
+    properties: string[];
     tags: string[] | null;
     /** Only annotations overlapping this range (plus whole-sound annotations) */
     timeRange: { start: number; end: number } | null;
 }
+
+/**
+ * A condition on a JSON (kv) annotation, from `prop=key:value`. The key may
+ * be a dotted path into nested objects (`a.b:x`). Matching is exact and
+ * case-sensitive, and uses the kv index: the annotation's JSON must contain
+ * one of `candidates`, which are the value as a string, as a number, boolean
+ * or null when it reads as one, and as an element of an array.
+ */
+export interface PropertyFilter {
+    path: string[];
+    value: string;
+    candidates: Record<string, unknown>[];
+}
+
+export const MAX_PROPERTY_FILTERS = 10;
+export const MAX_QUERY_LENGTH = 512;
+const MAX_PROPERTY_LENGTH = 512;
+
+export const parsePropertyFilter = (raw: string): PropertyFilter => {
+    const colon = raw.indexOf(':');
+    if (colon < 0) throw new InvalidRequest([`prop must look like key:value, not "${raw}"`]);
+    if (raw.length > MAX_PROPERTY_LENGTH) throw new InvalidRequest([`prop is longer than ${MAX_PROPERTY_LENGTH} characters`]);
+    const path = raw.slice(0, colon).split('.');
+    const value = raw.slice(colon + 1);
+    if (path.some((key) => key === '')) throw new InvalidRequest([`prop "${raw}" has an empty key`]);
+    const typed: unknown[] = [value];
+    if (/^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$/.test(value)) typed.push(Number(value));
+    if (value === 'true' || value === 'false') typed.push(value === 'true');
+    if (value === 'null') typed.push(null);
+    // as the value itself, or as an element of an array
+    const leaves = typed.flatMap((v) => [v, [v]]);
+    const nest = (leaf: unknown) => path.reduceRight<unknown>((inner, key) => ({ [key]: inner }), leaf);
+    return { path, value, candidates: leaves.map((leaf) => nest(leaf) as Record<string, unknown>) };
+};
 
 export type AnnotationLookup =
     | { status: 'found' | 'deleted'; annotation: Annotation; visible: boolean }
@@ -92,9 +156,23 @@ export interface AnnotationsPersistence {
     lookup(id: AnnotationId, viewer: UserId): Promise<AnnotationLookup>;
     feed(
         viewer: UserId,
-        request: Omit<AnnotationFeedRequest, 'schema'> & { schemaId: AnnotationSchemaId | null }
+        request: Omit<AnnotationFeedRequest, 'schema' | 'properties'> & {
+            schemaId: AnnotationSchemaId | null;
+            properties: PropertyFilter[];
+        }
     ): Promise<FeedPage<Annotation>>;
     markDeleted(id: AnnotationId, deletedBy: UserId): Promise<void>;
+    /** The nearest visible annotations of a vector schema, by cosine distance, nearest first */
+    nearest(
+        viewer: UserId,
+        query: {
+            schemaId: AnnotationSchemaId;
+            vectorDim: number;
+            vector: number[];
+            limit: number;
+            excludeSoundId: SoundId | null;
+        }
+    ): Promise<SimilarAnnotation[]>;
 }
 
 /** Validates `data` against a JSON schema;  returns error messages */
@@ -109,6 +187,13 @@ export interface AnnotationsDomain {
     getAnnotation(actor: Principal, id: AnnotationId): Promise<Annotation>;
     listAnnotations(actor: Principal, request: AnnotationFeedRequest): Promise<FeedPage<Annotation>>;
     deleteAnnotation(actor: Principal, id: AnnotationId): Promise<void>;
+    /**
+     * The annotations whose vectors are nearest a vector annotation's, among
+     * those of the same schema (each vector schema has its own index). The
+     * query annotation itself is included, at distance 0, unless its sound is
+     * excluded.
+     */
+    similarAnnotations(actor: Principal, id: AnnotationId, request: SimilarityRequest): Promise<SimilarAnnotation[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +290,7 @@ export const normalizeAccess = (access: Access, creator: UserId): Access =>
 export const buildAnnotationsDomain = (
     persistence: AnnotationsPersistence,
     deps: {
-        schemas: Pick<AnnotationSchemasDomain, 'resolveRefs'>;
+        schemas: Pick<AnnotationSchemasDomain, 'resolveRefs' | 'getById'>;
         sounds: Pick<SoundsDomain, 'lookupSound'>;
         users: Pick<UsersDomain, 'requireUsersExist'>;
         validateJson: JsonValidator;
@@ -276,11 +361,38 @@ export const buildAnnotationsDomain = (
             if (request.timeRange && request.timeRange.end < request.timeRange.start) {
                 throw new InvalidRequest(['time_range end must be >= start']);
             }
+            if (request.q !== null && request.q.length > MAX_QUERY_LENGTH) {
+                throw new InvalidRequest([`q is longer than ${MAX_QUERY_LENGTH} characters`]);
+            }
+            if (request.properties.length > MAX_PROPERTY_FILTERS) {
+                throw new InvalidRequest([`at most ${MAX_PROPERTY_FILTERS} prop filters`]);
+            }
+            const properties = request.properties.map(parsePropertyFilter);
             const schemaId = request.schema
                 ? (await deps.schemas.resolveRefs([request.schema])).get(request.schema)!.id
                 : null;
             const { schema: _schema, ...rest } = request;
-            return persistence.feed(actor.user.id, { ...rest, schemaId });
+            return persistence.feed(actor.user.id, { ...rest, schemaId, properties });
+        },
+
+        async similarAnnotations(actor, id, { limit, excludeSameSound }) {
+            requireRole(actor, 'ANNOTATION_READER');
+            if (!Number.isInteger(limit) || limit < 1 || limit > MAX_SIMILAR) {
+                throw new InvalidRequest([`limit must be between 1 and ${MAX_SIMILAR}`]);
+            }
+            const query = await mustBeVisible(actor, id);
+            if (query.value.kind !== 'vector') {
+                throw new InvalidRequest([`annotation ${id} isn't a vector annotation (${query.schemaRef} is ${query.value.kind})`]);
+            }
+            const schema = await deps.schemas.getById(query.schemaId);
+            if (!schema?.vectorDim) throw new Error(`schema ${query.schemaRef} has no vector_dim`);
+            return persistence.nearest(actor.user.id, {
+                schemaId: query.schemaId,
+                vectorDim: schema.vectorDim,
+                vector: query.value.vector,
+                limit,
+                excludeSoundId: excludeSameSound ? query.soundId : null,
+            });
         },
 
         async deleteAnnotation(actor, id) {

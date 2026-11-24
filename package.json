@@ -18,12 +18,14 @@
     "build-shared": "yarn workspace @cochlea/shared build",
     "build-codec": "sh codec/build-wasm.sh",
     "test-codec": "cargo test --manifest-path codec/rust/Cargo.toml && node codec/schema/check-examples.cjs",
+    "test-python": ".venv/bin/python -m pytest -q clients/python/tests integrations bots",
     "cli": "tsx api/src/cli.ts",
     "postinstall": "yarn build-shared",
     "typecheck": "yarn workspace @cochlea/shared build && yarn workspace @cochlea/api typecheck && yarn workspace @cochlea/web typecheck",
     "test-unit": "yarn workspace @cochlea/api test-unit",
     "test-api": "yarn workspace @cochlea/api test-api",
     "arch-test": "yarn workspace @cochlea/api arch-test",
-    "ready": "yarn typecheck && yarn test-unit && yarn arch-test && yarn test-api"
+    "ready": "yarn typecheck && yarn test-unit && yarn arch-test && yarn test-api",
+    "test-all": "yarn ready && yarn test-codec && yarn test-python"
   }
 }

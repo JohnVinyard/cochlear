@@ -77,6 +77,15 @@ def _canonical(value: Any) -> Any:
     raise TypeError(f"not JSON-serialisable: {value!r}")
 
 
+def _prop_value(v: Any) -> str:
+    """How a prop filter's value is written: JSON's spelling for booleans and null"""
+    if v is None:
+        return "null"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return str(v)
+
+
 def _float32(x: float) -> float:
     return struct.unpack("f", struct.pack("f", x))[0]
 
@@ -138,8 +147,16 @@ class CochleaClient:
         api_key: str,
         session: Optional[requests.Session] = None,
         timeout: float = 30,
+        url_rewrites: Optional[dict[str, str]] = None,
     ):
+        """
+        `url_rewrites` maps URL prefixes to replacements for `download_blob`:
+        blob URLs are built for whoever reads them publicly, which may not be
+        how this client reaches the store (inside docker compose,
+        `{"http://localhost:4443/": "http://gcs:4443/"}`).
+        """
         self.base_url = base_url.rstrip("/")
+        self.url_rewrites = dict(url_rewrites or {})
         self.session = session or requests.Session()
         self.session.headers["Authorization"] = f"Bearer {api_key}"
         self.timeout = timeout
@@ -244,7 +261,17 @@ class CochleaClient:
         page_size: int = 100,
         follow: bool = False,
         poll_interval: float = 10,
+        q: Optional[str] = None,
+        props: Optional[dict[str, Any]] = None,
+        kind: Optional[str] = None,
     ) -> Iterator[dict]:
+        """
+        `q`: full-text search over tags, prose and JSON string values
+        (web-search syntax: words, "a phrase", -excluded, or).
+        `props`: exact matches on JSON (kv) annotations, all of which must
+        hold, e.g. {"instrument_name": "Piano", "note": 60}; dotted keys reach
+        nested objects ({"meta.source": "x"}).
+        """
         path = f"/sounds/{sound_id}/annotations" if sound_id else "/annotations"
         return self._feed(
             path,
@@ -255,6 +282,9 @@ class CochleaClient:
             tags=",".join(tags) if tags else None,
             created_by=created_by,
             page_size=page_size,
+            q=q,
+            kind=kind,
+            prop=[f"{k}:{_prop_value(v)}" for k, v in props.items()] if props else None,
         )
 
     def get_sound(self, sound_id: int) -> dict:
@@ -391,6 +421,17 @@ class CochleaClient:
         for annotation_id in stale:
             self.delete_annotation(annotation_id)
         return SyncResult(created=len(missing), existing=len(annotations) - len(missing), deleted=len(stale))
+
+    def download_blob(self, url: str) -> bytes:
+        """A blob's bytes. Blobs are public, so this sends no credentials."""
+        for prefix, replacement in self.url_rewrites.items():
+            if url.startswith(prefix):
+                url = replacement + url[len(prefix):]
+                break
+        resp = requests.get(url, timeout=self.timeout)
+        if not resp.ok:
+            raise ApiError(resp.status_code, [f"HTTP {resp.status_code} fetching blob {url}"])
+        return resp.content
 
     def upload_blob(self, data: bytes, content_type: str = "application/x-npz") -> str:
         """Uploads bytes (e.g. an .npz of features), returning a URL for a blob annotation"""

@@ -10,9 +10,18 @@ import {
     parseSchemaRef,
 } from './domain';
 
-const inMemory = (): AnnotationSchemasPersistence => {
+const inMemory = (indexed = new Set<AnnotationSchemaId>()): AnnotationSchemasPersistence => {
     const schemas: AnnotationSchema[] = [];
     return {
+        vectorSchemas: async () => schemas.filter((s) => s.kind === 'vector'),
+        async ensureVectorIndex(schema) {
+            if (indexed.has(schema.id)) return 'exists';
+            indexed.add(schema.id);
+            return 'created';
+        },
+        scheduleVectorIndex(schema) {
+            indexed.add(schema.id);
+        },
         async insertNextVersion(createdBy, schema) {
             const versions = schemas.filter((s) => s.name === schema.name);
             const latest = versions[versions.length - 1];
@@ -84,5 +93,16 @@ describe('annotation schemas', () => {
         const resolved = await domain.resolveRefs(['tags@1', 'tags@1']);
         expect(resolved.size).toBe(1);
         await expect(domain.resolveRefs(['tags@1', 'text@1'])).rejects.toThrow(/text@1/);
+    });
+
+    it('gives every vector schema its own search index', async () => {
+        const indexed = new Set<AnnotationSchemaId>();
+        const domain = buildAnnotationSchemasDomain(inMemory(indexed), () => []);
+        const vector = await domain.createSchema(firebasePrincipal(1), { ...tags, name: 'v', kind: 'vector', vectorDim: 25 });
+        await domain.createSchema(firebasePrincipal(1), tags);
+        expect([...indexed]).toEqual([vector.id]);
+        expect(await domain.ensureVectorIndexes()).toEqual([]);
+        indexed.clear();
+        expect(await domain.ensureVectorIndexes()).toEqual(['v@1']);
     });
 });

@@ -61,3 +61,17 @@ tr.clickable:hover { background: var(--panel); }
 .props dd { margin: 0; }
 pre { background: var(--panel); padding: 8px; border-radius: 6px; overflow: auto; }
 annotation-timeline { margin-top: 4px; }
+
+/* legends beside charts: text in ink colours, the swatch carries identity */
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0; padding: 0; font-size: 12px; }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(127, 127, 127, 0.35); }
+
+/* the API reference (Stoplight Elements) brings its own layout */
+.page.wide { max-width: none; padding: 0; }
+.api-docs-bar { padding: 8px 16px; justify-content: space-between; }
+.api-docs { overflow: hidden; border-top: 1px solid var(--border, #d0d4db); }
+
+.search { display: flex; flex-direction: column; gap: 8px; }
+.search .grow { flex: 1; min-width: 240px; }
+.search textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; }

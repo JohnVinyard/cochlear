@@ -14,29 +14,38 @@ docker compose), each in its own transaction, and recorded in
 `annotations.vector_value` is a dimensionless `vector`, because each
 annotation schema of kind `vector` has its own dimension. pgvector can only
 index fixed-dimension vectors (of at most 2000 dimensions, which is why
-schemas are capped at 2000), so indices are created by hand, per schema,
-as partial expression indices. For example, for `chroma-mean@1`
-(dimension 12):
+schemas are capped at 2000), so **every vector schema gets its own partial
+expression index**, created automatically:
+
+- in the background, as soon as the schema is created (`POST /v1/annotation-schemas`):
+  building one scans the whole `annotations` table, so it can take a while, and
+  until it exists searches still work, by sequential scan;
+- at API startup, for any vector schema without a valid one (older schemas,
+  or a `create index concurrently` that was interrupted).
+
+For a schema with id 67 and dimension 25 it's:
 
 ```sql
--- find the schema id
-select id from annotation_schemas where name = 'chroma-mean' and version = 1;
-
-create index concurrently annotations_vector_chroma_mean_1_idx
-    on annotations
-    using hnsw ((vector_value::vector(12)) vector_cosine_ops)
-    where schema_id = <id> and deleted_at is null;
+create index concurrently if not exists annotations_vector_67
+    on annotations using hnsw ((vector_value::vector(25)) vector_cosine_ops)
+    where schema_id = 67;
 ```
 
-Queries must use the same expression and predicate for the index to apply:
+Queries must use the same expression and predicate for the planner to use
+it, which is why both are built in one place, `src/shared/db/vectors.ts`.
+`GET /v1/annotations/{id}/similar` uses them, with pgvector's iterative
+scans (`hnsw.iterative_scan = relaxed_order`), so visibility and deletion
+filters don't starve the index of results. Check a plan with:
 
 ```sql
+begin;
+set local hnsw.iterative_scan = relaxed_order;
+explain analyze
 select id from annotations
-where schema_id = <id> and deleted_at is null
-order by vector_value::vector(12) <=> '[...]'::vector(12)
-limit 10;
+where schema_id = 67 and deleted_at is null
+order by (vector_value::vector(25)) <=> '[...]'::vector(25)
+limit 100;      -- expect: Index Scan using annotations_vector_67
+rollback;
 ```
 
-When an index is permanent, capture it in a numbered script. `create index
-concurrently` can't run inside a transaction, so use a plain `create index`
-in the script.
+Distance is cosine for every schema, for now.

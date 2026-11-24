@@ -1,4 +1,10 @@
-import type { AnnotationKind, AnnotationResource, NewAnnotation, Access as WireAccess } from '@cochlea/shared';
+import type {
+    AnnotationKind,
+    AnnotationResource,
+    NewAnnotation,
+    SimilarAnnotationsResource,
+    Access as WireAccess,
+} from '@cochlea/shared';
 import express, { type Request, type Response, Router } from 'express';
 import { principalOf } from '../../auth/adapters/express';
 import { HttpError } from '../../shared/http/errors';
@@ -9,6 +15,7 @@ import { type AnnotationId, type SoundId, toAnnotationId, toSoundId, toUserId, t
 import type { Access, Annotation, AnnotationInput, AnnotationsDomain } from '../domain';
 import createAnnotationsSchema from './createAnnotationsRequestBody.schema.json';
 import feedQuerySchema from './annotationFeedQuery.schema.json';
+import similarQuerySchema from './similarQuery.schema.json';
 
 const toWireAccess = (access: Access): WireAccess =>
     access.type === 'public' ? '*' : access.type === 'private' ? null : access.userIds;
@@ -89,6 +96,8 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
     ) => {
         const principal = principalOf(res);
         const q = req.query as Record<string, string | undefined>;
+        // repeated parameters arrive as arrays
+        const prop = (req.query as Record<string, string | string[] | undefined>).prop;
         if (q.time_range && !scope.soundId) {
             throw new HttpError(400, ['time_range is only supported for a single sound\'s annotations']);
         }
@@ -100,6 +109,8 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
             kind: (q.kind as AnnotationKind | undefined) ?? null,
             tags: q.tags ? q.tags.split(',').map((t) => t.trim()).filter(Boolean) : null,
             timeRange: parseTimeRange(q.time_range),
+            q: q.q?.trim() || null,
+            properties: prop === undefined ? [] : Array.isArray(prop) ? prop : [prop],
         });
         res.json(renderFeedPage(req, links, path, page, (a) => renderAnnotation(links, a, principal.user.id)));
     };
@@ -139,6 +150,29 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
         const principal = principalOf(res);
         const annotation = await domain.getAnnotation(principal, toAnnotationId(req.params.annotationId));
         res.json(renderAnnotation(links, annotation, principal.user.id));
+    });
+
+    r.get('/annotations/:annotationId/similar', requireValidQuery(similarQuerySchema), async (req, res) => {
+        const principal = principalOf(res);
+        const q = req.query as { limit?: string; exclude_same_sound?: string };
+        const results = await domain.similarAnnotations(principal, toAnnotationId(req.params.annotationId), {
+            limit: q.limit ? Number(q.limit) : 100,
+            excludeSameSound: q.exclude_same_sound === 'true',
+        });
+        const body: SimilarAnnotationsResource = {
+            items: results.map(({ annotation, distance, sound }) => ({
+                distance,
+                annotation: renderAnnotation(links, annotation, principal.user.id),
+                sound: {
+                    id: sound.id,
+                    title: sound.title,
+                    audio_url: sound.audioUrl,
+                    duration_seconds: sound.durationSeconds,
+                    links: { self: links.href(`/sounds/${sound.id}`) },
+                },
+            })),
+        };
+        res.json(body);
     });
 
     r.delete('/annotations/:annotationId', async (req, res) => {

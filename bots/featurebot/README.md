@@ -32,7 +32,7 @@ docker compose logs -f featurebot           # what it's doing
 docker compose restart featurebot           # after changing its code (it's bind-mounted)
 ```
 
-The `featurebot-key` service creates the bot user, and an API key for it, the
+The `bot-keys` service creates the bot user, and an API key for it, the
 first time it runs. The key is kept in `.data/bots/featurebot.key`; delete it
 to issue a new one (e.g. after recreating the database, when the bot exits
 with a 401).

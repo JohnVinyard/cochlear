@@ -20,8 +20,16 @@ Each bot:
 - **owns its schemas** (`<bot>-<thing>@N`), created with
   `client.ensure_schema`. A change of algorithm means new schema versions,
   and starting the feed over.
-- **runs as a docker compose service** for local development.
+- **runs as a docker compose service** for local development, from one
+  shared image (`docker/bots.Dockerfile`). The `bot-keys` service creates
+  each bot's user and API key the first time (`bots/issue-keys.sh`; add new
+  bots there), kept in `.data/bots/<name>.key`.
+
+The loop itself (cursor, conditional state writes, retries and backoff,
+recording failures) is [`botkit.py`](botkit.py): a bot subclasses `FeedBot`
+and provides `items(cursor)` and `handle(item)`.
 
 | Bot | Follows | Annotates with |
 |---|---|---|
 | [`featurebot/`](featurebot) | sounds | onsets, and frame-level chroma and MFCCs (librosa) |
+| [`segmentbot/`](segmentbot) | featurebot's onsets | a 25-d chroma + MFCC vector per onset segment, for similarity search |

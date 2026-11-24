@@ -8,6 +8,19 @@
         "created_by": { "type": "string", "pattern": "^[1-9][0-9]*$" },
         "schema": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}@[1-9][0-9]*$" },
         "kind": { "description": "only annotations whose schema is of this kind", "enum": ["tags", "text", "vector", "kv", "blob"] },
+        "q": {
+            "description": "full-text search over tags, prose and the string values of JSON annotations, in web-search syntax: words, \"a phrase\", -excluded, or. English stemming; case-insensitive.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+        },
+        "prop": {
+            "description": "key:value: JSON (kv) annotations whose key (a dotted path for nested objects) has exactly this value, as a string, or as a number, boolean or null when it reads as one, or in an array. Case-sensitive. Repeat for several (all must hold).",
+            "anyOf": [
+                { "type": "string", "pattern": "^[^:]+:" },
+                { "type": "array", "maxItems": 10, "items": { "type": "string", "pattern": "^[^:]+:" } }
+            ]
+        },
         "tags": { "description": "comma-separated; annotations must have all of them", "type": "string", "minLength": 1 },
         "time_range": {
             "description": "start-end, in seconds (only for a single sound's annotations)",
