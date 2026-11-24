@@ -66,6 +66,8 @@ export interface AnnotationFeedRequest extends FeedRequest<AnnotationId> {
     soundId: SoundId | null;
     createdBy: UserId | null;
     schema: string | null;
+    /** Only annotations whose schema is of this kind, e.g. blobs */
+    kind: AnnotationKind | null;
     tags: string[] | null;
     /** Only annotations overlapping this range (plus whole-sound annotations) */
     timeRange: { start: number; end: number } | null;

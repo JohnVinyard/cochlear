@@ -15,8 +15,10 @@ What's done and what's next is in [`TODO.md`](TODO.md).
 | `clients/python/` | Python client |
 | `codec/` | An experimental JSON audio codec: spec, schemas, a Rust/WebAssembly decoder (see [`codec/README.md`](codec/README.md)) |
 | `integrations/` | Dataset ingestion scripts (e.g. MusicNet), each run as its own bot user |
+| `bots/` | Long-running bots that follow feeds and annotate (e.g. `featurebot`: onsets, chroma, MFCCs) |
+| `docs/` | Conventions, e.g. [time series blobs](docs/annotation-conventions.md) that the web app can draw |
 | `firebase/` | Firebase auth emulator image |
-| `docker/` | Development image |
+| `docker/` | Development images |
 
 ## Local development
 
@@ -52,6 +54,12 @@ The API and the web app hot-reload. Changes to `shared/` need
 `docker compose restart api`. The `codec` service builds the codec's
 WebAssembly decoder once at startup. After changing Rust code, run
 `docker compose run --rm codec` (or `yarn build-codec`) and reload the page.
+
+The `featurebot` service annotates every sound in the feed, so it starts
+working through whatever's there as soon as the stack is up
+([`bots/featurebot`](bots/featurebot/README.md)). Point `AUDIO_DATA_DIR` in
+`.env` at local copies of datasets, so it reads their audio from disk rather
+than downloading it.
 
 ### Talking to the API
 
@@ -116,7 +124,7 @@ yarn test-unit       # domain unit tests
 yarn test-api        # full-stack API tests; requires `docker compose up`
 yarn arch-test       # clean-architecture dependency rules
 yarn ready           # all of the above
-.venv/bin/pytest clients/python/tests integrations   # python client and integrations
+.venv/bin/pytest clients/python/tests integrations bots   # python client, integrations and bots
 yarn test-codec      # codec: cargo test, and the examples against the JSON schemas (needs Rust)
 ```
 

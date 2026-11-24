@@ -9,7 +9,19 @@ import {
     withTransaction,
 } from '../../shared/db/pool';
 import type { UserId } from '../../shared/ids';
-import { type User, UserNameTaken, type UsersPersistence } from '../domain';
+import { type User, UserNameTaken, type UserState, type UsersPersistence } from '../domain';
+
+interface StateRow {
+    state: Record<string, unknown>;
+    state_version: number;
+    state_updated_at: Date | null;
+}
+
+const toState = (row: StateRow): UserState => ({
+    document: row.state,
+    version: Number(row.state_version),
+    updatedAt: row.state_updated_at,
+});
 
 interface UserRow {
     id: number;
@@ -48,6 +60,28 @@ export const buildUsersPersistence = (pool: pg.Pool): UsersPersistence => {
     };
 
     return {
+        async getState(id) {
+            const row = await executeQueryOne<StateRow>(
+                pool,
+                'select state, state_version, state_updated_at from users where id = $1',
+                [id]
+            );
+            if (!row) throw new Error(`no user ${id}`);
+            return toState(row);
+        },
+
+        async putState(id, document, ifVersion) {
+            const row = await executeQueryOne<StateRow>(
+                pool,
+                `update users
+                 set state = $2::jsonb, state_version = state_version + 1, state_updated_at = now()
+                 where id = $1 and ($3::bigint is null or state_version = $3)
+                 returning state, state_version, state_updated_at`,
+                [id, JSON.stringify(document), ifVersion]
+            );
+            return row ? toState(row) : null;
+        },
+
         getById: (id) => getOne('u.id = $1', id),
         getByFirebaseUid: (uid) => getOne('u.firebase_uid = $1', uid),
         getByEmail: (email) => getOne('lower(u.email) = lower($1)', email),

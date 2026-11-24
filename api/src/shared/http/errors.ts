@@ -6,6 +6,7 @@ import {
     InvalidRequest,
     NotFound,
     PermissionDenied,
+    PreconditionFailed,
     Unauthenticated,
 } from '../errors';
 import type { Links } from './links';
@@ -21,6 +22,7 @@ const statusFor = (err: DomainError): number => {
     if (err instanceof NotFound) return 404;
     if (err instanceof Conflict) return 409;
     if (err instanceof Gone) return 410;
+    if (err instanceof PreconditionFailed) return 412;
     return 500;
 };
 

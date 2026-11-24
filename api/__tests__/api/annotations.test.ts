@@ -141,7 +141,7 @@ describe('annotation access', () => {
 });
 
 describe('annotation feeds', () => {
-    it('filters by schema, tags and time range', async () => {
+    it('filters by schema, kind, tags and time range', async () => {
         const user = await newUser();
         const sound = await createSound(user, { duration_seconds: 60 });
         const res = await user.client.post(sound.links.annotations, {
@@ -155,6 +155,10 @@ describe('annotation feeds', () => {
         const [whole, early, late, text] = ids(res.body.items);
         const feed = (q: string) => user.client.walk(`${sound.links.annotations}?${q}`).then(ids);
         expect(await feed('schema=text@1')).toEqual([text]);
+        expect(await feed('kind=text')).toEqual([text]);
+        expect(await feed('kind=tags&tags=drums')).toEqual([late]);
+        expect(await feed('kind=blob')).toEqual([]);
+        expect((await user.client.get(`${sound.links.annotations}?kind=nope`)).status).toBe(400);
         expect(await feed('tags=piano')).toEqual([whole, early]);
         expect(await feed('tags=piano,bright')).toEqual([whole]);
         // whole-sound annotations apply to every time range

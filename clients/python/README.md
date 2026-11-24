@@ -9,11 +9,16 @@ from cochlea_client import CochleaClient
 
 client = CochleaClient("http://localhost:8080/v1", api_key="cka_...")
 
-# a feature bot: follow the sound feed forever, from a persisted offset
-for sound in client.feed_sounds(low_id=load_offset(), follow=True):
-    client.create_annotations(sound["id"], [{"schema": "tags@1", "tags": ["seen"]}], access="*")
-    save_offset(sound["id"])
+# a feature bot: follow the sound feed forever, keeping its place in its
+# user's state document (a small, private JSON object, reset by clear-data)
+state = client.get_state()
+for sound in client.feed_sounds(low_id=state.document.get("cursor"), follow=True):
+    client.sync_annotations(sound["id"], [{"schema": "tags@1", "tags": ["seen"]}], access="*")
+    # If-Match: raises StateConflict if anyone else wrote the state since
+    state = client.put_state({"cursor": sound["id"]}, if_match=state.etag)
 ```
+
+See [`bots/featurebot`](../../bots/featurebot) for a complete one.
 
 Create an API key in the web app (`/api-keys`), giving it only the roles the
 bot needs.

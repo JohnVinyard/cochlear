@@ -1,6 +1,6 @@
 import { DEFAULT_USER_ROLES, type Role } from '@cochlea/shared';
 import type { Principal } from '../auth/domain';
-import { InvalidRequest, NotFound, Unauthenticated } from '../shared/errors';
+import { InvalidRequest, NotFound, PreconditionFailed, Unauthenticated } from '../shared/errors';
 import type { UserId } from '../shared/ids';
 
 // ---------------------------------------------------------------------------
@@ -31,6 +31,20 @@ export interface UserUpdate {
     aboutMe?: string;
     infoUrl?: string | null;
 }
+
+/**
+ * A small, private, machine-readable JSON document per user, e.g. a bot's
+ * feed cursor. `version` increases on every write (and when data is cleared),
+ * and backs ETag / If-Match.
+ */
+export interface UserState {
+    document: Record<string, unknown>;
+    version: number;
+    updatedAt: Date | null;
+}
+
+/** Serialized, in UTF-8 bytes */
+export const MAX_STATE_BYTES = 64 * 1024;
 
 export class UserNameTaken extends InvalidRequest {
     constructor(userName: string) {
@@ -65,6 +79,9 @@ export interface UsersPersistence {
     existingIds(ids: readonly UserId[]): Promise<Set<UserId>>;
     grantRole(id: UserId, role: Role): Promise<void>;
     revokeRole(id: UserId, role: Role): Promise<void>;
+    getState(id: UserId): Promise<UserState>;
+    /** Replaces the state; returns null (and writes nothing) if `ifVersion` is given and isn't current */
+    putState(id: UserId, document: Record<string, unknown>, ifVersion: number | null): Promise<UserState | null>;
 }
 
 export interface FirebaseIdentity {
@@ -82,6 +99,12 @@ export interface UsersDomain {
     getMe(principal: Principal): Promise<User>;
     getUser(principal: Principal, id: UserId): Promise<User>;
     updateMe(principal: Principal, update: UserUpdate): Promise<User>;
+    getMyState(principal: Principal): Promise<UserState>;
+    /**
+     * Replaces the caller's state document. With `ifVersion`, only if that's
+     * still the current version (otherwise `PreconditionFailed`).
+     */
+    putMyState(principal: Principal, document: unknown, ifVersion?: number): Promise<UserState>;
     /** Throws `InvalidRequest` listing any ids that are not live users */
     requireUsersExist(ids: readonly UserId[]): Promise<void>;
     /** Administrative (CLI-only) operations */
@@ -177,6 +200,29 @@ export const buildUsersDomain = (
             }
             await persistence.update(principal.user.id, update);
             return mustGet(principal.user.id);
+        },
+
+        async getMyState(principal) {
+            return persistence.getState(principal.user.id);
+        },
+
+        async putMyState(principal, document, ifVersion) {
+            if (document === null || typeof document !== 'object' || Array.isArray(document)) {
+                throw new InvalidRequest(['state must be a JSON object']);
+            }
+            const bytes = Buffer.byteLength(JSON.stringify(document), 'utf8');
+            if (bytes > MAX_STATE_BYTES) {
+                throw new InvalidRequest([`state is ${bytes} bytes; the limit is ${MAX_STATE_BYTES}`]);
+            }
+            const state = await persistence.putState(
+                principal.user.id,
+                document as Record<string, unknown>,
+                ifVersion ?? null
+            );
+            if (!state) {
+                throw new PreconditionFailed(`state has changed since version ${ifVersion}; fetch it and try again`);
+            }
+            return state;
         },
 
         async requireUsersExist(ids) {

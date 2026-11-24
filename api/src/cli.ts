@@ -34,7 +34,7 @@ const usage = (): never => {
             '  yarn cli grant-role <email> <ROLE>',
             '  yarn cli revoke-role <email> <ROLE>',
             '  yarn cli dev-token <email>',
-            '  yarn cli clear-data [--keep-ids]   delete all sounds and annotations (local databases only)',
+            '  yarn cli clear-data [--keep-ids]   delete all sounds and annotations, and reset user state (local databases only)',
             '  yarn cli create-bot <user_name> [--about TEXT] [--info-url URL]',
             '                                     create or update a bot user and print a new API key for it',
             '',
@@ -56,9 +56,9 @@ const main = async () => {
         const pool = createPool(db);
         try {
             const keepIds = flags.includes('--keep-ids');
-            const { sounds, annotations } = await clearSoundsAndAnnotations(pool, { keepIds });
+            const { sounds, annotations, states } = await clearSoundsAndAnnotations(pool, { keepIds });
             console.log(
-                `deleted ${sounds} sounds and ${annotations} annotations` +
+                `deleted ${sounds} sounds and ${annotations} annotations, and reset ${states} users' state` +
                     (keepIds ? ' (ids continue from where they were)' : ' (ids restart at 1)')
             );
         } finally {

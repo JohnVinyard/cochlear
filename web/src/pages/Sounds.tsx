@@ -5,6 +5,7 @@ import { api, ApiError, appPath, useFeed, useResource } from '../api';
 import { AnnotationTable, ApiLink, ErrorMessage, LoadMore } from '../components';
 import { AnnotationTimeline } from '../elements/AnnotationTimeline';
 import { AudioView } from '../elements/AudioView';
+import { SoundTimeseries } from '../elements/TimeseriesViews';
 import type { AudioViewElement } from '../elements/web-components';
 
 export const SoundsPage = () => {
@@ -113,6 +114,16 @@ export const SoundPage = () => {
         [sound.data]
     );
 
+    const playFrom = useCallback(
+        (seconds: number) => {
+            if (sound.data) {
+                const start = Math.max(0, seconds);
+                audioView.current?.playAudio(sound.data.audio_url, start, sound.data.duration_seconds - start);
+            }
+        },
+        [sound.data]
+    );
+
     if (sound.error) return <ErrorMessage error={sound.error} />;
     if (!sound.data) return <p>Loading…</p>;
     const s = sound.data;
@@ -136,6 +147,7 @@ export const SoundPage = () => {
                 <button className={view === 'spectrogram' ? '' : 'secondary'} onClick={() => setView('spectrogram')}>Spectrogram</button>
             </div>
             <AudioView id={`audio-view-${s.id}`} ref={audioView} src={s.audio_url} view={view} />
+            <SoundTimeseries sound={s} audioViewId={`audio-view-${s.id}`} onSelected={playFrom} />
             <AnnotationTimeline
                 duration={s.duration_seconds}
                 annotations={annotations.items}

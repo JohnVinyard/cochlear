@@ -26,9 +26,9 @@ import hashlib
 import json
 import struct
 import time
-from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Literal, Optional, Sequence, Union
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
@@ -41,6 +41,19 @@ class ApiError(Exception):
         super().__init__(f"HTTP {status}: {'; '.join(errors)}")
         self.status = status
         self.errors = errors
+
+
+class StateConflict(ApiError):
+    """`put_state(..., if_match=...)`: the state changed since that version
+    (another instance wrote it, or the data was cleared). Re-read it."""
+
+
+@dataclass
+class State:
+    """Your state document, and its version (an ETag, for `put_state(if_match=...)`)"""
+
+    document: dict
+    etag: str
 
 
 VALUE_FIELDS = ("tags", "text", "vector", "kv", "blob")
@@ -109,10 +122,12 @@ def content_key(annotation: dict) -> str:
 class SyncResult:
     created: int = 0
     existing: int = 0
+    deleted: int = 0
 
     def __iadd__(self, other: "SyncResult") -> "SyncResult":
         self.created += other.created
         self.existing += other.existing
+        self.deleted += other.deleted
         return self
 
 
@@ -132,18 +147,32 @@ class CochleaClient:
     # -- plumbing -----------------------------------------------------------
 
     def _url(self, href_or_path: str) -> str:
-        if href_or_path.startswith("http"):
-            return href_or_path
-        return self.base_url + href_or_path
+        if not href_or_path.startswith(("http://", "https://")):
+            return self.base_url + href_or_path
+        # The API's links (e.g. a feed's `next`) are absolute, built from its
+        # public URL, which needn't be how this client reaches it (inside
+        # docker compose, `localhost:8080` is really `api:8080`). Links under
+        # the API's root keep their path and query, on our base URL.
+        base, href = urlsplit(self.base_url), urlsplit(href_or_path)
+        if href.path == base.path or href.path.startswith(base.path.rstrip("/") + "/"):
+            return urlunsplit((base.scheme, base.netloc, href.path, href.query, ""))
+        return href_or_path
+
+    def _send(self, method: str, href_or_path: str, **kwargs: Any) -> requests.Response:
+        resp = self.session.request(method, self._url(href_or_path), timeout=self.timeout, **kwargs)
+        if not resp.ok:
+            try:
+                errors = resp.json().get("errors", [resp.reason])
+            except ValueError:
+                errors = [resp.reason]
+            raise (StateConflict if resp.status_code == 412 else ApiError)(resp.status_code, errors)
+        return resp
 
     def request(self, method: str, href_or_path: str, **kwargs: Any) -> Any:
-        resp = self.session.request(method, self._url(href_or_path), timeout=self.timeout, **kwargs)
+        resp = self._send(method, href_or_path, **kwargs)
         if resp.status_code == 204:
             return None
-        body = resp.json() if resp.content else None
-        if not resp.ok:
-            raise ApiError(resp.status_code, (body or {}).get("errors", [resp.reason]))
-        return body
+        return resp.json() if resp.content else None
 
     def get(self, href_or_path: str, **params: Any) -> Any:
         return self.request("GET", href_or_path, params={k: v for k, v in params.items() if v is not None})
@@ -179,6 +208,19 @@ class CochleaClient:
         if not hasattr(self, "_my_id"):
             self._my_id = self.me()["id"]
         return self._my_id
+
+    def get_state(self) -> State:
+        """Your state document: a small, private JSON object (at most 64 KB),
+        e.g. a bot's feed cursor. It starts as {}, and clear-data resets it."""
+        resp = self._send("GET", "/users/me/state")
+        return State(resp.json(), resp.headers["ETag"])
+
+    def put_state(self, document: dict, *, if_match: Optional[str] = None) -> State:
+        """Replaces your state document. With `if_match` (a `State.etag`), only
+        if nobody has written it since; otherwise raises `StateConflict`."""
+        headers = {"If-Match": if_match} if if_match else {}
+        resp = self._send("PUT", "/users/me/state", json=document, headers=headers)
+        return State(resp.json(), resp.headers["ETag"])
 
     def feed_sounds(
         self,
@@ -308,6 +350,7 @@ class CochleaClient:
         *,
         access: Access,
         on_batch: Optional[Callable[[int], None]] = None,
+        prune: bool = False,
     ) -> SyncResult:
         """
         Makes sure every annotation in `annotations` exists on the sound,
@@ -321,18 +364,22 @@ class CochleaClient:
         so changing it doesn't create new annotations. Annotations you've
         deleted aren't in the feed, so they will be created again.
 
+        With `prune=True`, your other annotations on the sound (ones that
+        don't match anything in `annotations`, e.g. an older version of a
+        bot's output) are deleted, after the new ones are created: your
+        annotations on the sound become exactly `annotations`.
+
         Not safe against a *concurrent* run for the same sound, which can
         create duplicates.
         """
-        existing = Counter(
-            content_key(a)
-            for a in self.feed_annotations(sound_id=sound_id, created_by=self.my_id, page_size=MAX_BATCH)
-        )
+        existing: dict[str, list[int]] = {}
+        for a in self.feed_annotations(sound_id=sound_id, created_by=self.my_id, page_size=MAX_BATCH):
+            existing.setdefault(content_key(a), []).append(a["id"])
         missing = []
         for a in annotations:
-            key = content_key(a)
-            if existing[key]:
-                existing[key] -= 1
+            ids = existing.get(content_key(a))
+            if ids:
+                ids.pop(0)  # keep the oldest, which anything that links here most likely points at
             else:
                 missing.append(a)
         for i in range(0, len(missing), MAX_BATCH):
@@ -340,7 +387,10 @@ class CochleaClient:
             self.create_annotations(sound_id, batch, access=access)
             if on_batch:
                 on_batch(len(batch))
-        return SyncResult(created=len(missing), existing=len(annotations) - len(missing))
+        stale = [i for ids in existing.values() for i in ids] if prune else []
+        for annotation_id in stale:
+            self.delete_annotation(annotation_id)
+        return SyncResult(created=len(missing), existing=len(annotations) - len(missing), deleted=len(stale))
 
     def upload_blob(self, data: bytes, content_type: str = "application/x-npz") -> str:
         """Uploads bytes (e.g. an .npz of features), returning a URL for a blob annotation"""

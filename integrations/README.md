@@ -1,7 +1,8 @@
 # Integrations
 
 Scripts that bring an existing dataset into Cochlea, using the
-[Python client](../clients/python). Each one:
+[Python client](../clients/python). (Long-running bots that follow feeds
+are in [`../bots`](../bots).) Each one:
 
 - **runs as its own bot user.** Then "just this dataset's sounds" is
   `GET /v1/sounds?created_by=<bot>`, and its annotations are

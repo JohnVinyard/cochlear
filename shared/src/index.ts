@@ -195,3 +195,34 @@ export interface NewAnnotation {
 export interface ErrorBody {
     errors: string[];
 }
+
+/**
+ * A convention, not an API rule: a blob annotation whose blob is an `.npz`
+ * holding a time series (e.g. frame-level features) says how to read it in
+ * `data.timeseries`, so viewers can draw it without knowing the schema.
+ * Time is the **last** axis: 1-d arrays are `(frames,)`, 2-d ones
+ * `(rows, frames)`. See docs/annotation-conventions.md.
+ */
+export interface TimeseriesData {
+    /** Which array in the .npz; may be omitted if there's only one */
+    array?: string;
+    /** Frames per second: frame i is at start_seconds + i / frame_rate */
+    frame_rate: number;
+    /** When frame 0 is, relative to the annotation's start (or the sound's, for whole-sound annotations). Default 0. */
+    start_seconds?: number;
+    /** Labels for the rows of a 2-d array, first row first */
+    rows?: string[];
+    /** Display range [min, max]; default: the data's own */
+    range?: [number, number];
+    /** "global" (default): one colour scale for everything; "rows": each row scaled on its own */
+    normalize?: 'global' | 'rows';
+}
+
+/** `data.timeseries`, if an annotation follows the time series convention */
+export const timeseriesOf = (annotation: { blob?: BlobRef; data: unknown }): TimeseriesData | null => {
+    const t = (annotation.data as { timeseries?: unknown } | null)?.timeseries as TimeseriesData | undefined;
+    if (!annotation.blob || !t || typeof t !== 'object' || !(typeof t.frame_rate === 'number' && t.frame_rate > 0)) {
+        return null;
+    }
+    return t;
+};

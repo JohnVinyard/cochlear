@@ -43,6 +43,9 @@ export class Gone extends DomainError {
     }
 }
 
+/** A conditional request's precondition (e.g. `If-Match`) doesn't hold */
+export class PreconditionFailed extends DomainError {}
+
 /** A conflicting resource already exists */
 export class Conflict extends DomainError {
     constructor(

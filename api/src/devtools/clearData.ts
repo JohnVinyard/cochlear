@@ -16,10 +16,15 @@ export const assertLocalDatabase = (host: string) => {
 export interface ClearDataResult {
     sounds: number;
     annotations: number;
+    /** Users whose (non-empty) state document was reset */
+    states: number;
 }
 
 /**
- * Hard-deletes every sound and annotation (including soft-deleted ones).
+ * Hard-deletes every sound and annotation (including soft-deleted ones), and
+ * resets every user's state document to `{}`: bot state (e.g. a feed cursor)
+ * describes data that's gone. State versions are bumped rather than reset,
+ * so a bot's next conditional write fails (412) and it re-reads its state.
  * Users, API keys and annotation schemas are kept. Uploaded blobs are left in
  * the bucket; they're content-addressed, so leftovers are harmless.
  *
@@ -31,11 +36,16 @@ export const clearSoundsAndAnnotations = (pool: pg.Pool, { keepIds }: { keepIds:
         const counts = await executeQueryOne<ClearDataResult>(
             tx,
             `select (select count(*) from sounds)::int as sounds,
-                    (select count(*) from annotations)::int as annotations`
+                    (select count(*) from annotations)::int as annotations,
+                    (select count(*) from users where state <> '{}'::jsonb)::int as states`
         );
         await executeCommand(
             tx,
             `truncate annotation_access, annotations, sounds ${keepIds ? 'continue' : 'restart'} identity`
+        );
+        await executeCommand(
+            tx,
+            `update users set state = '{}'::jsonb, state_version = state_version + 1, state_updated_at = now()`
         );
         return counts!;
     });

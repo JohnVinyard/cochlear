@@ -7,6 +7,7 @@
         "page_size": { "type": "string", "pattern": "^(?:[1-9][0-9]?|[1-4][0-9]{2}|500)$" },
         "created_by": { "type": "string", "pattern": "^[1-9][0-9]*$" },
         "schema": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}@[1-9][0-9]*$" },
+        "kind": { "description": "only annotations whose schema is of this kind", "enum": ["tags", "text", "vector", "kv", "blob"] },
         "tags": { "description": "comma-separated; annotations must have all of them", "type": "string", "minLength": 1 },
         "time_range": {
             "description": "start-end, in seconds (only for a single sound's annotations)",

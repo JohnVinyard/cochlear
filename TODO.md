@@ -77,6 +77,18 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [ ] Web app: show `musicnet-note@1` as a piano roll rather than as timeline lanes
 - [ ] More datasets
 
+## Bots
+
+- [ ] The next bot: summarise featurebot's chroma and MFCC frames over its onset segments, as vector annotations (and then a pgvector index per vector schema, for search)
+- [ ] Blob URLs are built for the host (`BLOB_PUBLIC_URL_TEMPLATE`, `localhost:4443`), so bots in containers can't download them. Rebase them like API links, or give bots an internal URL.
+- [ ] featurebot: tell transient decode problems from permanent ones (today any decode error skips the sound for good)
+- [ ] A way to re-run a bot over particular sounds (e.g. after fixing a failure), short of resetting its whole state
+- [ ] Bot liveness: surface each bot's state (cursor, failures) in the web app, e.g. on its user page
+- [ ] Look at the sound page's `<timeseries-view>`s in a browser: the `.npz` reader is tested against numpy's output, and the page gets the right annotations, but nobody has seen them drawn yet
+- [ ] `<timeseries-view>`: zoom/scroll in step with `<audio-view>` (like `<annotation-timeline>`, it always shows the whole sound); a colour scale legend; arrays with more than 2 axes
+- [ ] Should `data.timeseries` be declared by the schema (e.g. its `json_schema` or a schema-level field) rather than repeated on every annotation?
+- [ ] featurebot onsets on dense music are very short (~4/s for MusicNet); tune `onset_detect`, or let consumers merge them
+
 ## Python client
 
 - [ ] Tests (pytest against the compose stack)
@@ -95,6 +107,10 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [x] Codec draft 0.1: `codec/SPEC.md`, JSON schemas, examples; Rust decoder (sampler with slice/envelope/band-pass/convolution, sequencer with compounding speed, `data:`/WAV decoding), `gammatone` extension, C-ABI WebAssembly build, CLI; browser AudioWorklet host; `<codec-viewer>` (max depth, timeline, play any node in context) at the hidden `/labs/codec`; `codec` compose service
 - [x] Codec draft 0.2: `defs` and `$ref` (sounds, envelopes, patterns; instance paths plus `source` pointers; errors located in the definition), reverse-DNS extension types, `requires`; `drums.json` rewritten around patterns (172 KB → 9 KB); the viewer shows references and highlights every use of a definition
 
+- [x] User state documents (`GET`/`PUT /v1/users/me/state`, ETag/If-Match, reset by clear-data), and `client.get_state`/`put_state`
+- [x] Time series convention for `.npz` blob annotations (`docs/annotation-conventions.md`, `TimeseriesData`); `<timeseries-view>` (canvas heatmap/line, dependency-free `.npz` reader) on the sound page; a `kind` filter on annotation feeds; `sync_annotations(prune=True)`; featurebot v2 writes the convention
+- [x] featurebot (`bots/featurebot`): follows the sound feed; onsets, frame-level chroma and MFCC blobs; a compose service with its own key and local audio mirrors
+- [x] Python client: API links (`next`) are followed on the client's own base URL, so it works inside docker compose
 - [x] MusicNet integration (`integrations/musicnet`): sounds, metadata, tags and note labels. Idempotent, and runs as the `musicnet` bot.
 - [x] `yarn cli create-bot` (bot users that authenticate only with API keys)
 - [x] Python client: `content_key`, `ensure_schema`, `sync_annotations` (re-runnable ingestion), and pytest unit tests

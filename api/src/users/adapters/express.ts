@@ -1,10 +1,11 @@
 import type { UserResource } from '@cochlea/shared';
-import express, { Router } from 'express';
+import express, { type Response, Router } from 'express';
 import { principalOf } from '../../auth/adapters/express';
 import type { Links } from '../../shared/http/links';
+import { HttpError } from '../../shared/http/errors';
 import { requireValidBody } from '../../shared/http/validation';
 import { toUserId } from '../../shared/ids';
-import type { User, UsersDomain } from '../domain';
+import type { User, UserState, UsersDomain } from '../domain';
 import updateMeSchema from './updateMeRequestBody.schema.json';
 
 export const renderUser = (links: Links, user: User, isMe: boolean): UserResource => ({
@@ -18,12 +19,37 @@ export const renderUser = (links: Links, user: User, isMe: boolean): UserResourc
         self: links.href(`/users/${user.id}`),
         sounds: links.href(`/users/${user.id}/sounds`),
         annotations: links.href(`/users/${user.id}/annotations`),
-        ...(isMe ? { api_keys: links.href('/api-keys') } : {}),
+        ...(isMe ? { api_keys: links.href('/api-keys'), state: links.href('/users/me/state') } : {}),
     },
 });
 
+const sendState = (res: Response, state: UserState) => {
+    res.setHeader('ETag', `"${state.version}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    if (state.updatedAt) res.setHeader('Last-Modified', state.updatedAt.toUTCString());
+    res.json(state.document);
+};
+
+/** `If-Match: "7"` -> 7; `*` or no header -> unconditional */
+const parseIfMatch = (header: string | undefined): number | undefined => {
+    if (header === undefined || header.trim() === '*') return undefined;
+    const m = /^\s*(?:W\/)?"(\d+)"\s*$/.exec(header);
+    if (!m) throw new HttpError(400, ['If-Match must be an ETag from GET /users/me/state, e.g. "7"']);
+    return Number(m[1]);
+};
+
 export const router = (domain: UsersDomain, links: Links): Router => {
     const r = Router();
+
+    r.get('/users/me/state', async (_req, res) => {
+        sendState(res, await domain.getMyState(principalOf(res)));
+    });
+
+    // the domain enforces the real (64 KB) limit, with a clearer message
+    r.put('/users/me/state', express.json({ limit: '256kb', strict: false }), async (req, res) => {
+        const ifVersion = parseIfMatch(req.get('If-Match'));
+        sendState(res, await domain.putMyState(principalOf(res), req.body, ifVersion));
+    });
 
     r.get('/users/me', async (_req, res) => {
         const me = await domain.getMe(principalOf(res));

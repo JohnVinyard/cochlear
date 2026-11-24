@@ -149,7 +149,7 @@ export const buildAnnotationsPersistence = (pool: pg.Pool): AnnotationsPersisten
         return { status: row.deleted_at ? 'deleted' : 'found', annotation: toAnnotation(row), visible: row.visible };
     },
 
-    async feed(viewer, { lowId, pageSize, soundId, createdBy, schemaId, tags, timeRange }) {
+    async feed(viewer, { lowId, pageSize, soundId, createdBy, schemaId, kind, tags, timeRange }) {
         const rows = await executeQuery<AnnotationRow>(
             pool,
             `${SELECT.replaceAll('$VIEWER', '$1')}
@@ -164,6 +164,7 @@ export const buildAnnotationsPersistence = (pool: pg.Pool): AnnotationsPersisten
                and ($6::text[] is null or a.tags @> $6)
                and ($7::float8 is null or a.start_seconds is null
                     or (a.start_seconds <= $8 and a.start_seconds + a.duration_seconds >= $7))
+               and ($10::annotation_kind is null or s.kind = $10)
              order by a.id
              limit $9`,
             [
@@ -176,6 +177,7 @@ export const buildAnnotationsPersistence = (pool: pg.Pool): AnnotationsPersisten
                 timeRange?.start ?? null,
                 timeRange?.end ?? null,
                 pageSize + 1,
+                kind,
             ]
         );
         return { items: rows.slice(0, pageSize).map(toAnnotation), hasMore: rows.length > pageSize };

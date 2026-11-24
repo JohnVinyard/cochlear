@@ -243,6 +243,35 @@ export const buildOpenApiSpec = (serverUrl: string) => ({
                 responses: ok(ref('User')),
             },
         },
+        '/users/me/state': {
+            get: {
+                summary: 'Your state document',
+                description:
+                    'A small, private, machine-readable JSON object, e.g. a bot\'s feed cursor. It starts as {}. ' +
+                    'The ETag header is its version; clear-data resets it.',
+                responses: ok({ type: 'object' }),
+            },
+            put: {
+                summary: 'Replace your state document',
+                description:
+                    'At most 64 KB of JSON. Send If-Match with the ETag you last saw to write only if nobody else ' +
+                    'has since (another instance of a bot, or a clear-data): otherwise 412.',
+                parameters: [
+                    {
+                        name: 'If-Match',
+                        in: 'header',
+                        required: false,
+                        description: 'An ETag from GET or PUT, e.g. "7"',
+                        schema: { type: 'string' },
+                    },
+                ],
+                requestBody: { required: true, content: json({ type: 'object' }) },
+                responses: {
+                    ...ok({ type: 'object' }),
+                    '412': errorResponse('The state has changed since the If-Match version'),
+                },
+            },
+        },
         '/users/{user_id}': {
             parameters: [pathParam('user_id', 'User id')],
             get: { summary: 'A user', responses: { ...ok(ref('User')), '404': errorResponse('Not found') } },

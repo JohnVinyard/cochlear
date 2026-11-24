@@ -1,4 +1,4 @@
-import type { Access as WireAccess, AnnotationResource, NewAnnotation } from '@cochlea/shared';
+import type { AnnotationKind, AnnotationResource, NewAnnotation, Access as WireAccess } from '@cochlea/shared';
 import express, { type Request, type Response, Router } from 'express';
 import { principalOf } from '../../auth/adapters/express';
 import { HttpError } from '../../shared/http/errors';
@@ -97,6 +97,7 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
             soundId: scope.soundId ?? null,
             createdBy: scope.createdBy ?? (q.created_by ? toUserId(q.created_by) : null),
             schema: q.schema ?? null,
+            kind: (q.kind as AnnotationKind | undefined) ?? null,
             tags: q.tags ? q.tags.split(',').map((t) => t.trim()).filter(Boolean) : null,
             timeRange: parseTimeRange(q.time_range),
         });

@@ -1,13 +1,30 @@
 /** @group unit */
 import { DEFAULT_USER_ROLES } from '@cochlea/shared';
-import { InvalidRequest } from '../shared/errors';
+import { InvalidRequest, PreconditionFailed } from '../shared/errors';
 import type { UserId } from '../shared/ids';
 import { firebasePrincipal } from '../testing';
-import { buildUsersDomain, type User, UserNameTaken, userNameFromEmail, type UsersPersistence } from './domain';
+import {
+    buildUsersDomain,
+    MAX_STATE_BYTES,
+    type User,
+    UserNameTaken,
+    userNameFromEmail,
+    type UserState,
+    type UsersPersistence,
+} from './domain';
 
 const inMemory = () => {
     const users: User[] = [];
+    const states = new Map<UserId, UserState>();
     const persistence: UsersPersistence = {
+        getState: async (id) => states.get(id) ?? { document: {}, version: 0, updatedAt: null },
+        async putState(id, document, ifVersion) {
+            const current = await persistence.getState(id);
+            if (ifVersion !== null && ifVersion !== current.version) return null;
+            const next = { document, version: current.version + 1, updatedAt: new Date() };
+            states.set(id, next);
+            return next;
+        },
         getById: async (id) => users.find((u) => u.id === id) ?? null,
         getByFirebaseUid: async (uid) => users.find((u) => u.firebaseUid === uid) ?? null,
         getByEmail: async (email) => users.find((u) => u.email === email) ?? null,
@@ -105,6 +122,36 @@ describe('users', () => {
             const domain = buildUsersDomain(inMemory().persistence);
             await domain.principalForFirebaseIdentity({ uid: 'abc', email: 'jane@example.com' });
             await expect(domain.ensureBotUser({ userName: 'jane', roles: [] })).rejects.toThrow(InvalidRequest);
+        });
+    });
+
+    describe('state documents', () => {
+        const setup = async () => {
+            const domain = buildUsersDomain(inMemory().persistence);
+            return { domain, me: await domain.principalForFirebaseIdentity({ uid: 'bot', email: null }) };
+        };
+
+        it('start empty, and are replaced on every write', async () => {
+            const { domain, me } = await setup();
+            expect(await domain.getMyState(me)).toMatchObject({ document: {}, version: 0 });
+            await domain.putMyState(me, { cursor: 3, extra: true });
+            expect(await domain.putMyState(me, { cursor: 4 })).toMatchObject({ document: { cursor: 4 }, version: 2 });
+        });
+
+        it('are only written conditionally when the version still matches', async () => {
+            const { domain, me } = await setup();
+            const { version } = await domain.putMyState(me, { cursor: 1 });
+            await domain.putMyState(me, { cursor: 2 }, version);
+            await expect(domain.putMyState(me, { cursor: 99 }, version)).rejects.toThrow(PreconditionFailed);
+            expect((await domain.getMyState(me)).document).toEqual({ cursor: 2 });
+        });
+
+        it('must be small JSON objects', async () => {
+            const { domain, me } = await setup();
+            for (const bad of [null, [1], 'x', 3]) {
+                await expect(domain.putMyState(me, bad)).rejects.toThrow(InvalidRequest);
+            }
+            await expect(domain.putMyState(me, { big: 'x'.repeat(MAX_STATE_BYTES) })).rejects.toThrow(/limit/);
         });
     });
 });
