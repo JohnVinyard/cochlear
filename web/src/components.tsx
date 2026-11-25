@@ -152,7 +152,7 @@ export const AnnotationTable = ({
     /** Off where every annotation is on the same sound (e.g. that sound's page) */
     showSound?: boolean;
 }) => {
-    const sounds = useSounds(showSound ? items.map((a) => a.links.sound!) : []);
+    const sounds = useSounds(showSound ? items.map((a) => a.links.sound!.href) : []);
     return items.length ? (
         <table>
             <thead>
@@ -179,23 +179,23 @@ export const AnnotationTable = ({
                                 />
                             )}
                         </td>
-                        <td><ApiLink href={a.links.self!}>{a.id}</ApiLink></td>
+                        <td><ApiLink href={a.links.self!.href}>{a.id}</ApiLink></td>
                         {showSound && (
                             <td
                                 className="sound"
-                                title={sounds.get(a.links.sound!)?.title ?? undefined}
+                                title={sounds.get(a.links.sound!.href)?.title ?? undefined}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <SoundLink href={a.links.sound!} id={a.sound_id} sound={sounds.get(a.links.sound!)} />
+                                <SoundLink href={a.links.sound!.href} id={a.sound_id} sound={sounds.get(a.links.sound!.href)} />
                             </td>
                         )}
-                        <td><ApiLink href={a.links.schema!}>{a.schema}</ApiLink></td>
+                        <td><ApiLink href={a.links.schema!.href}>{a.schema}</ApiLink></td>
                         <td>{formatSeconds(a.start_seconds)}</td>
                         <td>{formatSeconds(a.end_seconds)}</td>
                         <td onClick={(e) => a.kv && e.stopPropagation()}>
                             <AnnotationValue a={a} compact />
                         </td>
-                        <td><ApiLink href={a.links.created_by!}>user {a.created_by}</ApiLink></td>
+                        <td><ApiLink href={a.links.created_by!.href}>user {a.created_by}</ApiLink></td>
                         <td><AccessBadge access={a.access} /></td>
                     </tr>
                 ))}

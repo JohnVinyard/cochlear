@@ -11,6 +11,7 @@ const SAMPLE_PARAMS: Record<string, string> = {
     annotation_id: '999999999',
     ref: 'tags@1',
     format_id: '999999999',
+    name: 'CreateSoundRequestBody',
 };
 
 describe('openapi spec', () => {

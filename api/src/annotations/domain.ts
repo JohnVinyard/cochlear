@@ -1,7 +1,7 @@
 import type { AnnotationKind, SchemaRef } from '@cochlea/shared';
 import type { AnnotationSchema, AnnotationSchemasDomain } from '../annotationSchemas/domain';
 import { schemaRef } from '../annotationSchemas/domain';
-import { type Principal, requireRole } from '../auth/domain';
+import { hasRole, type Principal, requireRole } from '../auth/domain';
 import { Gone, InvalidRequest, NotFound, PermissionDenied } from '../shared/errors';
 import type { AnnotationId, AnnotationSchemaId, SoundId, UserId } from '../shared/ids';
 import type { FeedPage, FeedRequest } from '../shared/paging';
@@ -284,6 +284,23 @@ export const normalizeAccess = (access: Access, creator: UserId): Access =>
         : access;
 
 // ---------------------------------------------------------------------------
+// Policy: who may do what. The use cases enforce it; the HTTP adapter offers
+// a link for an action only when it allows it. (Visibility, who may *see* an
+// annotation, is the persistence's job: see `access`.)
+// ---------------------------------------------------------------------------
+
+export const annotationPolicy = {
+    read: (actor: Principal) => hasRole(actor, 'ANNOTATION_READER'),
+    /** on any sound */
+    create: (actor: Principal) => hasRole(actor, 'ANNOTATION_EDITOR'),
+    delete: (actor: Principal, annotation: Pick<Annotation, 'createdBy'>) =>
+        hasRole(actor, 'ANNOTATION_EDITOR') && annotation.createdBy === actor.user.id,
+    /** Only vector annotations can be searched by */
+    searchSimilar: (actor: Principal, annotation: Pick<Annotation, 'value'>) =>
+        hasRole(actor, 'ANNOTATION_READER') && annotation.value.kind === 'vector',
+};
+
+// ---------------------------------------------------------------------------
 // Implementation
 // ---------------------------------------------------------------------------
 
@@ -398,7 +415,7 @@ export const buildAnnotationsDomain = (
         async deleteAnnotation(actor, id) {
             requireRole(actor, 'ANNOTATION_EDITOR');
             const annotation = await mustBeVisible(actor, id);
-            if (annotation.createdBy !== actor.user.id) {
+            if (!annotationPolicy.delete(actor, annotation)) {
                 throw new PermissionDenied('only the creator of an annotation may delete it');
             }
             await persistence.markDeleted(id, actor.user.id);

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { API_KEY_GRANTABLE_ROLES, API_KEY_PREFIX, type Role } from '@cochlea/shared';
-import { type Principal, requireFirebase, requireRole } from '../auth/domain';
+import { hasRole, type Principal, requireFirebase, requireRole } from '../auth/domain';
 import { InvalidRequest, NotFound, Unauthenticated } from '../shared/errors';
 import type { ApiKeyId, UserId } from '../shared/ids';
 
@@ -53,6 +53,7 @@ export interface ApiKeysPersistence {
 export interface ApiKeysDomain {
     createApiKey(actor: Principal, model: CreateApiKeyModel): Promise<CreatedApiKey>;
     listApiKeys(actor: Principal): Promise<ApiKey[]>;
+    getApiKey(actor: Principal, id: ApiKeyId): Promise<ApiKey>;
     deleteApiKey(actor: Principal, id: ApiKeyId): Promise<void>;
     authenticateApiKey(secret: string): Promise<Principal>;
     /**
@@ -62,6 +63,16 @@ export interface ApiKeysDomain {
      */
     issueApiKey(owner: { id: UserId; roles: readonly Role[] }, model: CreateApiKeyModel): Promise<CreatedApiKey>;
 }
+
+// ---------------------------------------------------------------------------
+// Policy: who may do what. The use cases enforce it; the HTTP adapter offers
+// a link for an action only when it allows it.
+// ---------------------------------------------------------------------------
+
+export const apiKeyPolicy = {
+    /** Listing, creating and deleting your keys: only from the web app */
+    manage: (actor: Principal) => actor.kind === 'firebase' && hasRole(actor, 'API_KEY_CREATOR'),
+};
 
 // ---------------------------------------------------------------------------
 // Implementation
@@ -135,6 +146,13 @@ export const buildApiKeysDomain = (
         async listApiKeys(actor) {
             requireKeyManager(actor, 'listing API keys');
             return persistence.listActive(actor.user.id);
+        },
+
+        async getApiKey(actor, id) {
+            requireKeyManager(actor, 'viewing API keys');
+            const key = (await persistence.listActive(actor.user.id)).find((k) => k.id === id);
+            if (!key) throw new NotFound(`api key ${id}`);
+            return key;
         },
 
         async deleteApiKey(actor, id) {

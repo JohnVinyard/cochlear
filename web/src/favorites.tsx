@@ -1,7 +1,7 @@
 import type { AnnotationResource, Page, UserResource } from '@cochlea/shared';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useSyncExternalStore } from 'react';
-import { api } from './api';
+import { api, follow } from './api';
 import { auth } from './auth';
 
 /**
@@ -101,7 +101,7 @@ export const toggleFavorite = async (soundId: number, span: Span | null): Promis
     try {
         const existing = state.byKey.get(key) ?? [];
         if (existing.length) {
-            await Promise.all(existing.map((a) => api(a.links.self!, { method: 'DELETE' })));
+            await Promise.all(existing.map((a) => follow(a.links.delete!)));
             const gone = new Set(existing.map((a) => a.id));
             set({ favorites: state.favorites.filter((a) => !gone.has(a.id)) });
         } else {

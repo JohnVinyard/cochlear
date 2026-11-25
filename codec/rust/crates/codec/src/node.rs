@@ -4,9 +4,10 @@
 //!
 //! 1. **parse**: each module turns its JSON node into a [`Node`], validating
 //!    everything and parsing its children through [`ParseContext::parse`];
-//! 2. **resources**: the host asks the document which URIs it needs, then
-//!    fetches and decodes them however it likes (`fetch` + `decodeAudioData`
-//!    in a browser, files or HTTP in a CLI);
+//! 2. **resources**: the host asks the document which URIs it needs (and
+//!    which parts of them), then fetches and decodes them however it likes
+//!    (`fetch` + `decodeAudioData`, or range requests, in a browser; files or
+//!    HTTP in a CLI);
 //! 3. **build**: each node becomes a [`Voice`], which renders samples.
 
 use std::cell::RefCell;
@@ -20,6 +21,7 @@ use serde_json::{Map, Value};
 use crate::audio::Audio;
 use crate::error::{Error, Result};
 use crate::refs::Sources;
+use crate::resources::{Resource, Span};
 
 /// Keys every node may have, whatever its type
 pub const COMMON_KEYS: [&str; 3] = ["type", "label", "meta"];
@@ -38,6 +40,11 @@ pub trait Node: Send + Sync {
     /// URIs of audio this node (not its children) needs
     fn resources(&self) -> Vec<String> {
         Vec::new()
+    }
+    /// Which parts of each resource it reads, so hosts can load just those
+    /// (e.g. with range requests). By default, all of every resource.
+    fn resource_spans(&self) -> Vec<(String, Span)> {
+        self.resources().into_iter().map(|uri| (uri, Span::WHOLE)).collect()
     }
     /// Child nodes, for walking the tree
     fn children(&self) -> Vec<&Child> {
@@ -152,6 +159,15 @@ impl Child {
         out
     }
 
+    /// Every part of every resource this subtree reads, in document order
+    pub fn resource_spans(&self) -> Vec<(String, Span)> {
+        let mut out = self.node.resource_spans();
+        for c in self.node.children() {
+            out.extend(c.resource_spans());
+        }
+        out
+    }
+
     fn collect_resources(&self, out: &mut Vec<String>) {
         for r in self.node.resources() {
             if !out.contains(&r) {
@@ -232,7 +248,7 @@ pub struct NodeLayout {
 
 pub struct BuildContext<'a> {
     pub(crate) sample_rate: f64,
-    pub(crate) resources: &'a HashMap<String, Arc<Audio>>,
+    pub(crate) resources: &'a HashMap<String, Resource>,
     pub(crate) layout: &'a RefCell<Vec<NodeLayout>>,
     /// When set, only this node (and its ancestors, for timing) makes sound
     pub(crate) solo: Option<&'a str>,
@@ -257,11 +273,16 @@ impl BuildContext<'_> {
         self.time_scale
     }
 
-    /// Decoded audio for a URI (at the output sample rate)
+    /// All of a resource's decoded audio (at the output sample rate). For
+    /// nodes that read all of it: see [`Node::resource_spans`].
     pub fn audio(&self, uri: &str) -> std::result::Result<Arc<Audio>, String> {
-        self.resources.get(uri).cloned().ok_or_else(|| {
-            format!("{} hasn't been loaded", display_uri(uri))
-        })
+        self.resource(uri)?.whole_audio().ok_or_else(|| format!("all of {} is needed, but only parts were loaded", display_uri(uri)))
+    }
+
+    /// What's been loaded of a resource (possibly only parts: what the node's
+    /// [`Node::resource_spans`] asked for)
+    pub fn resource(&self, uri: &str) -> std::result::Result<&Resource, String> {
+        self.resources.get(uri).ok_or_else(|| format!("{} hasn't been loaded", display_uri(uri)))
     }
 
     /// Absolute output frame for a time in seconds

@@ -18,6 +18,17 @@ interface Exports {
     cc_load(h: number, ptr: number, len: number): number;
     cc_resources(h: number): number;
     cc_provide(h: number, uriPtr: number, uriLen: number, pcmPtr: number, frames: number, sampleRate: number): number;
+    cc_resource_requests(h: number): number;
+    cc_provide_span(
+        h: number,
+        uriPtr: number,
+        uriLen: number,
+        pcmPtr: number,
+        frames: number,
+        sampleRate: number,
+        offsetSeconds: number,
+        totalSeconds: number
+    ): number;
     cc_build(h: number, pathPtr: number, pathLen: number): number;
     cc_seek(h: number, seconds: number): void;
     cc_render(h: number, outPtr: number, frames: number): number;
@@ -65,18 +76,35 @@ export class WasmDecoder {
         return this.result(this.x.cc_resources(this.h));
     }
 
-    provide(uri: Uint8Array, pcm: Float32Array, sampleRate: number): RawResult {
+    /** For each URI, the spans of it the document still needs: `[{uri, spans: [{start_seconds, end_seconds}]}]` */
+    resourceRequests(): RawResult {
+        return this.result(this.x.cc_resource_requests(this.h));
+    }
+
+    private withPcm(uri: Uint8Array, pcm: Float32Array, f: (up: number, un: number, pp: number) => number): RawResult {
         const status = this.withBytes(uri, (up, un) => {
             const bytes = pcm.length * 4;
             const pp = this.x.cc_alloc(bytes);
             new Float32Array(this.x.memory.buffer, pp, pcm.length).set(pcm);
             try {
-                return this.x.cc_provide(this.h, up, un, pp, pcm.length, sampleRate);
+                return f(up, un, pp);
             } finally {
                 this.x.cc_free(pp, bytes);
             }
         });
         return this.result(status);
+    }
+
+    /** All of a resource */
+    provide(uri: Uint8Array, pcm: Float32Array, sampleRate: number): RawResult {
+        return this.withPcm(uri, pcm, (up, un, pp) => this.x.cc_provide(this.h, up, un, pp, pcm.length, sampleRate));
+    }
+
+    /** Part of a resource, starting `offsetSeconds` into it; `totalSeconds` is its length, if known */
+    provideSpan(uri: Uint8Array, pcm: Float32Array, sampleRate: number, offsetSeconds: number, totalSeconds: number | null): RawResult {
+        return this.withPcm(uri, pcm, (up, un, pp) =>
+            this.x.cc_provide_span(this.h, up, un, pp, pcm.length, sampleRate, offsetSeconds, totalSeconds ?? -1)
+        );
     }
 
     /** `path` empty: the whole document; otherwise a JSON Pointer to one node */

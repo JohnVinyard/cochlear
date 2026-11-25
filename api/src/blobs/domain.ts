@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { type Principal, requireRole } from '../auth/domain';
+import { hasRole, type Principal, requireRole } from '../auth/domain';
 import { InvalidRequest } from '../shared/errors';
 
 /**
@@ -24,6 +24,11 @@ export interface BlobsDomain {
 }
 
 export const MAX_BLOB_BYTES = 50 * 1024 * 1024;
+
+/** Blobs only exist to be referenced by annotations, so creating annotations is what lets you upload them */
+export const blobPolicy = {
+    upload: (actor: Principal) => hasRole(actor, 'ANNOTATION_EDITOR'),
+};
 
 export const blobKey = (bytes: Buffer): string => `sha256/${createHash('sha256').update(bytes).digest('hex')}`;
 

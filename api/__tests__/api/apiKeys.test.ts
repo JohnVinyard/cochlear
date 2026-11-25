@@ -10,7 +10,7 @@ describe('api keys', () => {
         expect(created.status).toBe(201);
         expect(created.body.secret).toMatch(/^cka_/);
         expect(created.body.secret.startsWith(created.body.prefix)).toBe(true);
-        expect(created.headers.get('location')).toBe(created.body.links.self);
+        expect(created.headers.get('location')).toBe(created.body.links.self.href);
 
         const list = await user.client.get('/api-keys');
         expect(list.body.items).toHaveLength(1);

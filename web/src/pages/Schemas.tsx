@@ -28,11 +28,11 @@ export const SchemasPage = () => {
                 <tbody>
                     {feed.items.map((s) => (
                         <tr key={s.id}>
-                            <td><ApiLink href={s.links.self!}>{s.ref}</ApiLink></td>
+                            <td><ApiLink href={s.links.self!.href}>{s.ref}</ApiLink></td>
                             <td>{s.kind}{s.vector_dim ? `(${s.vector_dim})` : ''}</td>
                             <td className="number"><AnnotationCount schema={s} /></td>
                             <td>{s.description}</td>
-                            <td><ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink></td>
+                            <td><ApiLink href={s.links.created_by!.href}>user {s.created_by}</ApiLink></td>
                         </tr>
                     ))}
                 </tbody>
@@ -63,7 +63,7 @@ const CreateSchema = () => {
                     json_schema: jsonSchema ? JSON.parse(jsonSchema) : null,
                 },
             });
-            navigate(appPath(schema.links.self!));
+            navigate(appPath(schema.links.self!.href));
         } catch (err) {
             setError(err as Error);
         }
@@ -102,10 +102,10 @@ export const SchemaPage = () => {
             <dl className="props">
                 <dt>kind</dt><dd>{s.kind}{s.vector_dim ? ` (dimension ${s.vector_dim})` : ''}</dd>
                 <dt>annotations</dt><dd><AnnotationCount schema={s} /> public</dd>
-                <dt>created</dt><dd>{new Date(s.created_at).toLocaleString()} by <ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink></dd>
+                <dt>created</dt><dd>{new Date(s.created_at).toLocaleString()} by <ApiLink href={s.links.created_by!.href}>user {s.created_by}</ApiLink></dd>
                 <dt>data schema</dt><dd>{s.json_schema ? <JsonView value={s.json_schema} lines={24} /> : 'none (free-form)'}</dd>
             </dl>
-            <ApiLink href={s.links.annotations!}>Annotations using this schema</ApiLink>
+            <ApiLink href={s.links.annotations!.href}>Annotations using this schema</ApiLink>
         </>
     );
 };

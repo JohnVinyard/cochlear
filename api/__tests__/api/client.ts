@@ -10,7 +10,7 @@
  *   PGHOST/PGPORT/...            default localhost:5432, cochlea/cochlea
  */
 import { randomUUID } from 'node:crypto';
-import type { Role, UserResource } from '@cochlea/shared';
+import type { Link, Role, UserResource } from '@cochlea/shared';
 import pg from 'pg';
 import { emulatorSignIn } from '../../src/devtools/firebaseEmulator';
 
@@ -21,6 +21,11 @@ export interface ApiResponse<T = any> {
     headers: Headers;
     body: T;
 }
+
+/** A path relative to the API root, an absolute URL, or a link (whose href is used) */
+export type Target = string | Link;
+
+const hrefOf = (target: Target) => (typeof target === 'string' ? target : target.href);
 
 export class TestClient {
     constructor(private readonly authorization: string | null) {}
@@ -39,10 +44,11 @@ export class TestClient {
 
     async request<T = any>(
         method: string,
-        pathOrUrl: string,
+        target: Target,
         body?: unknown,
         headers: Record<string, string> = {}
     ): Promise<ApiResponse<T>> {
+        const pathOrUrl = hrefOf(target);
         const url = pathOrUrl.startsWith('http') ? pathOrUrl : API_BASE_URL + pathOrUrl;
         const isRaw = body instanceof Uint8Array || typeof body === 'string';
         const res = await fetch(url, {
@@ -64,16 +70,24 @@ export class TestClient {
         return { status: res.status, headers: res.headers, body: parsed as T };
     }
 
-    get = <T = any>(path: string) => this.request<T>('GET', path);
-    post = <T = any>(path: string, body?: unknown, headers?: Record<string, string>) =>
-        this.request<T>('POST', path, body, headers);
-    patch = <T = any>(path: string, body?: unknown) => this.request<T>('PATCH', path, body);
-    delete = <T = any>(path: string) => this.request<T>('DELETE', path);
+    get = <T = any>(target: Target) => this.request<T>('GET', target);
+    post = <T = any>(target: Target, body?: unknown, headers?: Record<string, string>) =>
+        this.request<T>('POST', target, body, headers);
+    put = <T = any>(target: Target, body?: unknown, headers?: Record<string, string>) =>
+        this.request<T>('PUT', target, body, headers);
+    patch = <T = any>(target: Target, body?: unknown) => this.request<T>('PATCH', target, body);
+    delete = <T = any>(target: Target) => this.request<T>('DELETE', target);
+
+    /** Does what a link says, failing the test if there is no such link */
+    follow = <T = any>(link: Link | undefined, body?: unknown, headers?: Record<string, string>) => {
+        expect(link).toBeDefined();
+        return this.request<T>(link!.method, link!, body, headers);
+    };
 
     /** Follows `next` links until exhausted, returning every item */
-    async walk<T = any>(path: string): Promise<T[]> {
+    async walk<T = any>(target: Target): Promise<T[]> {
         const items: T[] = [];
-        let next: string | undefined = path;
+        let next: Target | undefined = target;
         while (next) {
             const res: ApiResponse = await this.get(next);
             expect(res.status).toBe(200);

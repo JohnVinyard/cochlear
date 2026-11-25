@@ -1,7 +1,7 @@
-import { LICENSE_TYPES, type AnnotationResource, type Page, type SoundResource, type UserResource } from '@cochlea/shared';
+import { LICENSE_TYPES, type AnnotationResource, type Link, type Page, type SoundResource } from '@cochlea/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { api, ApiError, appPath, useFeed, useResource } from '../api';
+import { api, ApiError, appPath, follow, useFeed, useResource } from '../api';
 import { AnnotationTable, ApiLink, ErrorMessage, LicenseBadge, LoadMore } from '../components';
 import { AnnotationTimeline } from '../elements/AnnotationTimeline';
 import { AudioView, playSpan } from '../elements/AudioView';
@@ -27,12 +27,12 @@ export const SoundsPage = () => {
                     {feed.items.map((s) => (
                         <tr key={s.id}>
                             <td><StarButton soundId={s.id} /></td>
-                            <td><ApiLink href={s.links.self!}>{s.id}</ApiLink></td>
-                            <td><ApiLink href={s.links.self!}>{s.title ?? <em>untitled</em>}</ApiLink></td>
+                            <td><ApiLink href={s.links.self!.href}>{s.id}</ApiLink></td>
+                            <td><ApiLink href={s.links.self!.href}>{s.title ?? <em>untitled</em>}</ApiLink></td>
                             <td>{s.duration_seconds.toFixed(2)}s</td>
                             <td><LicenseBadge license={s.license_type} compact /></td>
                             <td className="truncate"><a href={s.audio_url}>{s.audio_url}</a></td>
-                            <td><ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink></td>
+                            <td><ApiLink href={s.links.created_by!.href}>user {s.created_by}</ApiLink></td>
                         </tr>
                     ))}
                 </tbody>
@@ -74,7 +74,7 @@ const CreateSound = () => {
                     duration_seconds: duration,
                 },
             });
-            navigate(appPath(sound.links.self!));
+            navigate(appPath(sound.links.self!.href));
         } catch (err) {
             setError(err as Error);
         }
@@ -105,7 +105,6 @@ const CreateSound = () => {
 export const SoundPage = () => {
     const { soundId } = useParams();
     const sound = useResource<SoundResource>(`/sounds/${soundId}`);
-    const me = useResource<UserResource>('/users/me');
     const annotations = useFeed<AnnotationResource>(`/sounds/${soundId}/annotations?page_size=500`);
     const audioView = useRef<AudioViewElement | null>(null);
     const [view, setView] = useState<'time-series' | 'spectrogram'>('time-series');
@@ -152,7 +151,7 @@ export const SoundPage = () => {
 
     const remove = async () => {
         if (!confirm('Delete this sound?')) return;
-        await api(s.links.self!, { method: 'DELETE' });
+        await follow(s.links.delete!);
         history.back();
     };
 
@@ -163,8 +162,8 @@ export const SoundPage = () => {
             </h1>
             <p className="muted">
                 {s.duration_seconds.toFixed(2)}s · <LicenseBadge license={s.license_type} />
-                {s.info_url && <> · <a href={s.info_url}>info</a></>} · added by <ApiLink href={s.links.created_by!}>user {s.created_by}</ApiLink>
-                {me.data?.id === s.created_by && <> · <button className="link danger" onClick={remove}>delete</button></>}
+                {s.info_url && <> · <a href={s.info_url}>info</a></>} · added by <ApiLink href={s.links.created_by!.href}>user {s.created_by}</ApiLink>
+                {s.links.delete && <> · <button className="link danger" onClick={remove}>delete</button></>}
             </p>
             <SoundFormats sound={s} />
             <div className="row">
@@ -182,7 +181,7 @@ export const SoundPage = () => {
             />
             {query && <SimilarSegments key={query.id} query={query} />}
             <h2>Annotations</h2>
-            <AddTags sound={s} onCreated={annotations.reload} />
+            {s.links.create_annotations && <AddTags create={s.links.create_annotations} onCreated={annotations.reload} />}
             <ErrorMessage error={annotations.error} />
             <AnnotationTable items={annotations.items} onSelect={play} showSound={false} />
             <LoadMore hasMore={annotations.hasMore} loadMore={annotations.loadMore} />
@@ -217,7 +216,7 @@ const SoundFormats = ({ sound }: { sound: SoundResource }) =>
     ) : null;
 
 /** The simplest possible annotation editor:  tags, optionally for a segment */
-const AddTags = ({ sound, onCreated }: { sound: SoundResource; onCreated: () => void }) => {
+const AddTags = ({ create, onCreated }: { create: Link; onCreated: () => void }) => {
     const [tags, setTags] = useState('');
     const [start, setStart] = useState('');
     const [end, setEnd] = useState('');
@@ -232,18 +231,15 @@ const AddTags = ({ sound, onCreated }: { sound: SoundResource; onCreated: () => 
                 ? { start_seconds: Number(start), duration_seconds: Math.max(0, Number(end) - Number(start)) }
                 : {};
         try {
-            await api<Page<AnnotationResource>>(sound.links.annotations!, {
-                method: 'POST',
-                body: {
-                    annotations: [
-                        {
-                            schema: 'tags@1',
-                            tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-                            access: isPublic ? '*' : null,
-                            ...segment,
-                        },
-                    ],
-                },
+            await follow<Page<AnnotationResource>>(create, {
+                annotations: [
+                    {
+                        schema: 'tags@1',
+                        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+                        access: isPublic ? '*' : null,
+                        ...segment,
+                    },
+                ],
             });
             setTags('');
             onCreated();

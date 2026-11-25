@@ -6,13 +6,16 @@ import type {
     Access as WireAccess,
 } from '@cochlea/shared';
 import express, { type Request, type Response, Router } from 'express';
+import { annotationSchemaPolicy } from '../../annotationSchemas/domain';
 import { principalOf } from '../../auth/adapters/express';
+import type { Principal } from '../../auth/domain';
 import { HttpError } from '../../shared/http/errors';
-import type { Links } from '../../shared/http/links';
+import { linkMap, type Links } from '../../shared/http/links';
 import { parseFeedRequest, renderFeedPage } from '../../shared/http/paging';
 import { requireValidBody, requireValidQuery } from '../../shared/http/validation';
+import { soundPolicy } from '../../sounds/domain';
 import { type AnnotationId, type SoundId, toAnnotationId, toSoundId, toUserId, type UserId } from '../../shared/ids';
-import type { Access, Annotation, AnnotationInput, AnnotationsDomain } from '../domain';
+import { type Access, type Annotation, type AnnotationInput, type AnnotationsDomain, annotationPolicy } from '../domain';
 import createAnnotationsSchema from './createAnnotationsRequestBody.schema.json';
 import feedQuerySchema from './annotationFeedQuery.schema.json';
 import similarQuerySchema from './similarQuery.schema.json';
@@ -27,7 +30,7 @@ const fromWireAccess = (access: WireAccess): Access =>
           ? { type: 'public' }
           : { type: 'users', userIds: access.map((id) => toUserId(id)) };
 
-export const renderAnnotation = (links: Links, a: Annotation, viewer: UserId): AnnotationResource => {
+export const renderAnnotation = (links: Links, actor: Principal, a: Annotation): AnnotationResource => {
     const value = (() => {
         switch (a.value.kind) {
             case 'tags':
@@ -55,13 +58,15 @@ export const renderAnnotation = (links: Links, a: Annotation, viewer: UserId): A
         ...value,
         data: a.data,
         // who else can see an annotation is the creator's business
-        ...(a.createdBy === viewer ? { access: toWireAccess(a.access) } : {}),
-        links: {
-            self: links.href(`/annotations/${a.id}`),
-            sound: links.href(`/sounds/${a.soundId}`),
-            schema: links.href(`/annotation-schemas/${a.schemaRef}`),
-            created_by: links.href(`/users/${a.createdBy}`),
-        },
+        ...(a.createdBy === actor.user.id ? { access: toWireAccess(a.access) } : {}),
+        links: linkMap({
+            self: links.get(`/annotations/${a.id}`),
+            sound: soundPolicy.read(actor) && links.get(`/sounds/${a.soundId}`),
+            schema: annotationSchemaPolicy.read(actor) && links.get(`/annotation-schemas/${a.schemaRef}`),
+            created_by: links.get(`/users/${a.createdBy}`),
+            similar: annotationPolicy.searchSimilar(actor, a) && links.get(`/annotations/${a.id}/similar`),
+            delete: annotationPolicy.delete(actor, a) && links.delete(`/annotations/${a.id}`),
+        }),
     };
 };
 
@@ -112,7 +117,15 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
             q: q.q?.trim() || null,
             properties: prop === undefined ? [] : Array.isArray(prop) ? prop : [prop],
         });
-        res.json(renderFeedPage(req, links, path, page, (a) => renderAnnotation(links, a, principal.user.id)));
+        res.json(
+            renderFeedPage(req, links, path, page, (a) => renderAnnotation(links, principal, a), {
+                // only a single sound's annotations can be added to
+                create:
+                    !!scope.soundId &&
+                    annotationPolicy.create(principal) &&
+                    links.post(`/sounds/${scope.soundId}/annotations`, createAnnotationsSchema),
+            })
+        );
     };
 
     r.get('/annotations', validQuery, (req, res) => feed(req, res, '/annotations', {}));
@@ -136,11 +149,11 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
             const soundId = toSoundId(req.params.soundId);
             const body = req.body as { annotations: NewAnnotation[] };
             const created = await domain.createAnnotations(principal, soundId, body.annotations.map(fromWire));
-            const location = links.href(`/sounds/${soundId}/annotations`);
+            const location = links.get(`/sounds/${soundId}/annotations`);
             res.status(201)
-                .location(location)
+                .location(location.href)
                 .json({
-                    items: created.map((a) => renderAnnotation(links, a, principal.user.id)),
+                    items: created.map((a) => renderAnnotation(links, principal, a)),
                     links: { sound_annotations: location },
                 });
         }
@@ -149,7 +162,7 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
     r.get('/annotations/:annotationId', async (req, res) => {
         const principal = principalOf(res);
         const annotation = await domain.getAnnotation(principal, toAnnotationId(req.params.annotationId));
-        res.json(renderAnnotation(links, annotation, principal.user.id));
+        res.json(renderAnnotation(links, principal, annotation));
     });
 
     r.get('/annotations/:annotationId/similar', requireValidQuery(similarQuerySchema), async (req, res) => {
@@ -162,13 +175,13 @@ export const router = (domain: AnnotationsDomain, links: Links): Router => {
         const body: SimilarAnnotationsResource = {
             items: results.map(({ annotation, distance, sound }) => ({
                 distance,
-                annotation: renderAnnotation(links, annotation, principal.user.id),
+                annotation: renderAnnotation(links, principal, annotation),
                 sound: {
                     id: sound.id,
                     title: sound.title,
                     audio_url: sound.audioUrl,
                     duration_seconds: sound.durationSeconds,
-                    links: { self: links.href(`/sounds/${sound.id}`) },
+                    links: { self: links.get(`/sounds/${sound.id}`) },
                 },
             })),
         };

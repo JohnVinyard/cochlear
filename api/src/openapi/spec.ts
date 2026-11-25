@@ -4,15 +4,11 @@
  * adapters validate against, so they cannot drift.  The API test suite
  * checks that the spec is valid, and that every operation in it is routed.
  */
-import { ANNOTATION_KINDS, LICENSE_TYPES, ROLES } from '@cochlea/shared';
-import createAnnotationSchema from '../annotationSchemas/adapters/createAnnotationSchemaRequestBody.schema.json';
+import { ANNOTATION_KINDS, HTTP_METHODS, LICENSE_TYPES, ROLES } from '@cochlea/shared';
 import annotationFeedQuery from '../annotations/adapters/annotationFeedQuery.schema.json';
-import createAnnotations from '../annotations/adapters/createAnnotationsRequestBody.schema.json';
 import similarQuery from '../annotations/adapters/similarQuery.schema.json';
-import createApiKey from '../apiKeys/adapters/createApiKeyRequestBody.schema.json';
-import { createSoundFormatSchema, createSoundSchema } from '../sounds/adapters/express';
 import soundFeedQuery from '../sounds/adapters/soundFeedQuery.schema.json';
-import updateMe from '../users/adapters/updateMeRequestBody.schema.json';
+import { REQUEST_SCHEMAS } from './requestSchemas';
 
 type Json = Record<string, unknown>;
 
@@ -86,8 +82,9 @@ const nullableString = { type: ['string', 'null'] };
 export const TAGS: { name: string; description: string; paths: RegExp }[] = [
     {
         name: 'Discovery',
-        description: 'The entry point, with links to every top-level resource',
-        paths: /^\/$/,
+        description:
+            'The entry point, with links to what you can do; and the JSON schemas that action links point to',
+        paths: /^\/(schemas\/\{name\})?$/,
     },
     {
         name: 'Sounds',
@@ -169,6 +166,10 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                 '`/sounds` and `/annotations` are feeds:  items are returned oldest-first, and',
                 'consumers can poll with `low_id=<last id seen>`.  Ids become visible in order, so',
                 'a consumer never skips an item.',
+                '',
+                'Every resource has `links`: `{href, method, schema?}` objects keyed by relation, starting',
+                'from `GET /`. They depend on who is asking: an action (e.g. a sound\'s `delete`) is only',
+                'linked if you may do it. `schema` is the URL of the JSON schema the request body must match.',
             ].join('\n'),
         },
         servers: [{ url: serverUrl }],
@@ -187,7 +188,24 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                     required: ['errors'],
                     properties: { errors: { type: 'array', items: { type: 'string' } } },
                 },
-                Links: { type: 'object', additionalProperties: { type: 'string', format: 'uri' } },
+                Link: {
+                    type: 'object',
+                    required: ['href', 'method'],
+                    properties: {
+                        href: { type: 'string', format: 'uri' },
+                        method: { type: 'string', enum: [...HTTP_METHODS] },
+                        schema: {
+                            type: 'string',
+                            format: 'uri',
+                            description: 'For JSON bodies: where the schema the body must match is served',
+                        },
+                    },
+                },
+                Links: {
+                    type: 'object',
+                    description: 'Keyed by relation; only what the requester may do is linked',
+                    additionalProperties: ref('Link'),
+                },
                 Role: { type: 'string', enum: [...ROLES] },
                 Access: {
                     description: 'null: only the creator; "*": any authenticated user; [ids]: these users (and the creator)',
@@ -322,19 +340,23 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                         size_bytes: { type: 'integer' },
                     },
                 },
-                UpdateMeRequestBody: strip(updateMe),
-                CreateApiKeyRequestBody: strip(createApiKey),
-                CreateSoundRequestBody: strip(createSoundSchema),
-                CreateSoundFormatRequestBody: strip(createSoundFormatSchema),
-                CreateAnnotationSchemaRequestBody: strip(createAnnotationSchema),
-                CreateAnnotationsRequestBody: strip(createAnnotations),
+                ...Object.fromEntries([...REQUEST_SCHEMAS].map(([id, schema]) => [id, strip(schema)])),
             },
         },
         paths: {
             '/': {
                 get: {
-                    summary: 'Entry point;  links to every top-level resource',
+                    summary: 'Entry point;  links to what you can do',
                     responses: ok({ type: 'object', properties: { links: ref('Links') } }),
+                },
+            },
+            '/schemas/{name}': {
+                parameters: [pathParam('name', 'e.g. CreateSoundRequestBody', { type: 'string' })],
+                get: {
+                    summary: 'A request body schema (the `schema` of an action link)',
+                    description: 'A draft-07 JSON schema whose `$id` is its own URL. No authentication required.',
+                    security: [],
+                    responses: { '200': { description: 'OK', content: json({ type: 'object' }) }, '404': errorResponse('Not found') },
                 },
             },
             '/users/me': {
@@ -367,7 +389,7 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                             schema: { type: 'string' },
                         },
                     ],
-                    requestBody: { required: true, content: json({ type: 'object' }) },
+                    requestBody: { required: true, content: json(ref('PutMyStateRequestBody')) },
                     responses: {
                         ...ok({ type: 'object' }),
                         '412': errorResponse('The state has changed since the If-Match version'),
@@ -397,7 +419,10 @@ export const buildOpenApiSpec = (serverUrl: string) =>
             '/api-keys': {
                 get: {
                     summary: 'Your active API keys (web app only)',
-                    responses: ok({ type: 'object', properties: { items: { type: 'array', items: ref('ApiKey') } } }),
+                    responses: ok({
+                        type: 'object',
+                        properties: { items: { type: 'array', items: ref('ApiKey') }, links: ref('Links') },
+                    }),
                 },
                 post: {
                     summary: 'Create an API key with a subset of your roles (web app only)',
@@ -407,6 +432,7 @@ export const buildOpenApiSpec = (serverUrl: string) =>
             },
             '/api-keys/{api_key_id}': {
                 parameters: [pathParam('api_key_id', 'API key id')],
+                get: { summary: 'One of your API keys (web app only)', responses: { ...ok(ref('ApiKey')), '404': errorResponse('Not found') } },
                 delete: { summary: 'Revoke an API key (web app only)', responses: noContent },
             },
             '/sounds': {
@@ -440,7 +466,10 @@ export const buildOpenApiSpec = (serverUrl: string) =>
                 get: {
                     summary: "A sound's encodings",
                     responses: {
-                        ...ok({ type: 'object', properties: { items: { type: 'array', items: ref('SoundFormat') } } }),
+                        ...ok({
+                            type: 'object',
+                            properties: { items: { type: 'array', items: ref('SoundFormat') }, links: ref('Links') },
+                        }),
                         '404': errorResponse('Not found'),
                         '410': errorResponse('Deleted'),
                     },

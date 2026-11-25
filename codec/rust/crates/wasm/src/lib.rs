@@ -18,7 +18,10 @@
 //! cc_new(sample_rate) -> h
 //! cc_load(h, json_ptr, json_len)            parse + validate; result: modules JSON
 //! cc_resources(h)                           result: JSON array of URIs still needed
-//! cc_provide(h, uri_ptr, uri_len, pcm_ptr, frames, sample_rate)   mono f32 PCM
+//! cc_resource_requests(h)                   result: [{uri, spans: [{start_seconds, end_seconds|null}]}]
+//! cc_provide(h, uri_ptr, uri_len, pcm_ptr, frames, sample_rate)   all of a URI: mono f32 PCM
+//! cc_provide_span(h, uri_ptr, uri_len, pcm_ptr, frames, sample_rate, offset_seconds, total_seconds)
+//!                                           part of a URI; total_seconds < 0: unknown
 //! cc_build(h, path_ptr, path_len)           path "" = whole document; result: layout JSON
 //! cc_seek(h, seconds)                       skip ahead (absolute document time)
 //! cc_render(h, out_ptr, frames) -> n        f32 frames of real audio; < frames at the end
@@ -149,7 +152,53 @@ pub unsafe extern "C" fn cc_resources(h: *mut Handle) -> u32 {
     }
 }
 
-/// Supplies decoded mono audio for a URI
+/// The parts of each URI the loaded document still needs, so a host can
+/// load just those (e.g. with range requests)
+///
+/// # Safety
+/// `h` must come from `cc_new`
+#[no_mangle]
+pub unsafe extern "C" fn cc_resource_requests(h: *mut Handle) -> u32 {
+    let h = &mut *h;
+    match &h.document {
+        Some(doc) => {
+            let requests = serde_json::to_value(h.decoder.resource_requests(doc)).unwrap_or_default();
+            h.ok(requests)
+        }
+        None => h.fail(Error::new("", "no document loaded")),
+    }
+}
+
+/// Supplies part of a URI's decoded mono audio, starting `offset_seconds`
+/// into it. `total_seconds` is the whole resource's length, or < 0 if unknown.
+///
+/// # Safety
+/// `h` must come from `cc_new`; the pointers must be readable for their lengths
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn cc_provide_span(
+    h: *mut Handle,
+    uri_ptr: *const u8,
+    uri_len: usize,
+    pcm_ptr: *const f32,
+    frames: usize,
+    sample_rate: f64,
+    offset_seconds: f64,
+    total_seconds: f64,
+) -> u32 {
+    let h = &mut *h;
+    match string(uri_ptr, uri_len) {
+        Ok(uri) => {
+            let pcm = if frames == 0 { Vec::new() } else { std::slice::from_raw_parts(pcm_ptr, frames).to_vec() };
+            let total = (total_seconds >= 0.0).then_some(total_seconds);
+            h.decoder.provide_span(uri, offset_seconds, Audio::new(sample_rate, pcm), total);
+            h.ok(json!(null))
+        }
+        Err(e) => h.fail(e),
+    }
+}
+
+/// Supplies all of a URI's decoded mono audio
 ///
 /// # Safety
 /// `h` must come from `cc_new`; the pointers must be readable for their lengths
@@ -264,6 +313,29 @@ mod tests {
             let bad = br#"{"format":"cochlea-codec","version":"0.2","root":{"type":"nope"}}"#;
             assert_eq!(cc_load(h, bad.as_ptr(), bad.len()), 1);
             assert_eq!(result(h)["path"], json!("/root"));
+            cc_destroy(h);
+        }
+    }
+
+    #[test]
+    fn asks_for_and_takes_parts_of_resources() {
+        unsafe {
+            let h = cc_new(1000.0);
+            let doc = br#"{"format":"cochlea-codec","version":"0.2","root":{"type":"sequencer","events":[
+                {"time_seconds":0,"node":{"type":"sampler","url":"x","start_seconds":10,"duration_seconds":0.004}}]}}"#;
+            assert_eq!(cc_load(h, doc.as_ptr(), doc.len()), 0);
+            assert_eq!(cc_resource_requests(h), 0);
+            assert_eq!(result(h), json!([{ "uri": "x", "spans": [{ "start_seconds": 10.0, "end_seconds": 10.004 }] }]));
+
+            let pcm = [0.5f32; 4];
+            let uri = b"x";
+            assert_eq!(cc_provide_span(h, uri.as_ptr(), 1, pcm.as_ptr(), 4, 1000.0, 10.0, 3600.0), 0);
+            assert_eq!(cc_resource_requests(h), 0);
+            assert_eq!(result(h), json!([]));
+            assert_eq!(cc_build(h, std::ptr::null(), 0), 0);
+            let mut out = [9.0f32; 8];
+            assert_eq!(cc_render(h, out.as_mut_ptr(), 8), 4);
+            assert_eq!(&out[..5], &[0.5, 0.5, 0.5, 0.5, 0.0]);
             cc_destroy(h);
         }
     }

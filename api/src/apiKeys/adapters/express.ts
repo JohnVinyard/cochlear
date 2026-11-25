@@ -1,7 +1,7 @@
 import type { ApiKeyResource, CreatedApiKeyResource } from '@cochlea/shared';
 import express, { Router } from 'express';
 import { principalOf } from '../../auth/adapters/express';
-import type { Links } from '../../shared/http/links';
+import { linkMap, type Links } from '../../shared/http/links';
 import { requireValidBody } from '../../shared/http/validation';
 import { toApiKeyId } from '../../shared/ids';
 import type { ApiKey, ApiKeysDomain, CreateApiKeyModel } from '../domain';
@@ -13,7 +13,12 @@ const renderApiKey = (links: Links, key: ApiKey): ApiKeyResource => ({
     prefix: key.prefix,
     roles: key.roles,
     created_at: key.createdAt.toISOString(),
-    links: { self: links.href(`/api-keys/${key.id}`), user: links.href(`/users/${key.userId}`) },
+    // only the web app ever sees a key, and the key manager may always delete it
+    links: linkMap({
+        self: links.get(`/api-keys/${key.id}`),
+        user: links.get(`/users/${key.userId}`),
+        delete: links.delete(`/api-keys/${key.id}`),
+    }),
 });
 
 export const router = (domain: ApiKeysDomain, links: Links): Router => {
@@ -21,13 +26,21 @@ export const router = (domain: ApiKeysDomain, links: Links): Router => {
 
     r.get('/api-keys', async (_req, res) => {
         const keys = await domain.listApiKeys(principalOf(res));
-        res.json({ items: keys.map((k) => renderApiKey(links, k)), links: { self: links.href('/api-keys') } });
+        // listing requires the same permission as creating
+        res.json({
+            items: keys.map((k) => renderApiKey(links, k)),
+            links: { self: links.get('/api-keys'), create: links.post('/api-keys', createApiKeySchema) },
+        });
     });
 
     r.post('/api-keys', express.json(), requireValidBody(createApiKeySchema), async (req, res) => {
         const created = await domain.createApiKey(principalOf(res), req.body as CreateApiKeyModel);
         const body: CreatedApiKeyResource = { ...renderApiKey(links, created), secret: created.secret };
-        res.status(201).location(body.links.self!).json(body);
+        res.status(201).location(body.links.self!.href).json(body);
+    });
+
+    r.get('/api-keys/:apiKeyId', async (req, res) => {
+        res.json(renderApiKey(links, await domain.getApiKey(principalOf(res), toApiKeyId(req.params.apiKeyId))));
     });
 
     r.delete('/api-keys/:apiKeyId', async (req, res) => {

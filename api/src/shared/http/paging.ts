@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { DEFAULT_PAGE_SIZE, type FeedPage, type FeedRequest } from '../paging';
-import type { Links } from './links';
+import type { Link } from '@cochlea/shared';
+import { linkMap, type Links } from './links';
 
 export const feedQuerySchemaProperties = {
     low_id: { type: 'string', pattern: '^[0-9]+$' },
@@ -17,23 +18,25 @@ export const parseFeedRequest = <TId extends number>(req: Request): FeedRequest<
 
 /**
  * Renders a feed page as `{items, next?, links}`, where `next` repeats the
- * current query with `low_id` advanced to the last item returned.
+ * current query with `low_id` advanced to the last item returned. `actions`
+ * are links for what the requester can do with the feed (e.g. `create`).
  */
 export const renderFeedPage = <T extends { id: number }, R>(
     req: Request,
     links: Links,
     path: string,
     page: FeedPage<T>,
-    render: (item: T) => R
+    render: (item: T) => R,
+    actions: Record<string, Link | false> = {}
 ) => {
     const query = { ...(req.query as Record<string, string | string[]>) };
-    const self = links.href(path, query);
+    const self = links.get(path, query);
     const last = page.items[page.items.length - 1];
     const next =
         page.hasMore && last ? links.href(path, { ...query, low_id: last.id }) : undefined;
     return {
         items: page.items.map(render),
         ...(next ? { next } : {}),
-        links: { self },
+        links: linkMap({ self, ...actions }),
     };
 };

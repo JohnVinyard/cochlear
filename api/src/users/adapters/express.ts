@@ -1,27 +1,41 @@
 import type { UserResource } from '@cochlea/shared';
 import express, { type Response, Router } from 'express';
+import { annotationPolicy } from '../../annotations/domain';
+import { createApiKeySchema } from '../../apiKeys';
+import { apiKeyPolicy } from '../../apiKeys/domain';
 import { principalOf } from '../../auth/adapters/express';
-import type { Links } from '../../shared/http/links';
+import type { Principal } from '../../auth/domain';
+import { linkMap, type Links } from '../../shared/http/links';
 import { HttpError } from '../../shared/http/errors';
 import { requireValidBody } from '../../shared/http/validation';
 import { toUserId } from '../../shared/ids';
+import { soundPolicy } from '../../sounds/domain';
 import type { User, UserState, UsersDomain } from '../domain';
+import putMyStateSchema from './putMyStateRequestBody.schema.json';
 import updateMeSchema from './updateMeRequestBody.schema.json';
 
-export const renderUser = (links: Links, user: User, isMe: boolean): UserResource => ({
-    id: user.id,
-    user_name: user.userName,
-    about_me: user.aboutMe,
-    info_url: user.infoUrl,
-    created_at: user.createdAt.toISOString(),
-    ...(isMe ? { email: user.email, roles: user.roles } : {}),
-    links: {
-        self: links.href(`/users/${user.id}`),
-        sounds: links.href(`/users/${user.id}/sounds`),
-        annotations: links.href(`/users/${user.id}/annotations`),
-        ...(isMe ? { api_keys: links.href('/api-keys'), state: links.href('/users/me/state') } : {}),
-    },
-});
+export const renderUser = (links: Links, actor: Principal, user: User): UserResource => {
+    const isMe = user.id === actor.user.id;
+    const canManageKeys = isMe && apiKeyPolicy.manage(actor);
+    return {
+        id: user.id,
+        user_name: user.userName,
+        about_me: user.aboutMe,
+        info_url: user.infoUrl,
+        created_at: user.createdAt.toISOString(),
+        ...(isMe ? { email: user.email, roles: user.roles } : {}),
+        links: linkMap({
+            self: links.get(`/users/${user.id}`),
+            sounds: soundPolicy.read(actor) && links.get(`/users/${user.id}/sounds`),
+            annotations: annotationPolicy.read(actor) && links.get(`/users/${user.id}/annotations`),
+            update: isMe && links.patch('/users/me', updateMeSchema),
+            state: isMe && links.get('/users/me/state'),
+            update_state: isMe && links.put('/users/me/state', putMyStateSchema),
+            api_keys: canManageKeys && links.get('/api-keys'),
+            create_api_key: canManageKeys && links.post('/api-keys', createApiKeySchema),
+        }),
+    };
+};
 
 const sendState = (res: Response, state: UserState) => {
     res.setHeader('ETag', `"${state.version}"`);
@@ -52,24 +66,25 @@ export const router = (domain: UsersDomain, links: Links): Router => {
     });
 
     r.get('/users/me', async (_req, res) => {
-        const me = await domain.getMe(principalOf(res));
-        res.json(renderUser(links, me, true));
+        const actor = principalOf(res);
+        res.json(renderUser(links, actor, await domain.getMe(actor)));
     });
 
     r.patch('/users/me', express.json(), requireValidBody(updateMeSchema), async (req, res) => {
         const body = req.body as { user_name?: string; about_me?: string; info_url?: string | null };
-        const me = await domain.updateMe(principalOf(res), {
+        const actor = principalOf(res);
+        const me = await domain.updateMe(actor, {
             userName: body.user_name,
             aboutMe: body.about_me,
             infoUrl: body.info_url,
         });
-        res.json(renderUser(links, me, true));
+        res.json(renderUser(links, actor, me));
     });
 
     r.get('/users/:userId', async (req, res) => {
         const principal = principalOf(res);
         const user = await domain.getUser(principal, toUserId(req.params.userId));
-        res.json(renderUser(links, user, user.id === principal.user.id));
+        res.json(renderUser(links, principal, user));
     });
 
     return r;

@@ -153,18 +153,18 @@ describe('annotation feeds', () => {
             ],
         });
         const [whole, early, late, text] = ids(res.body.items);
-        const feed = (q: string) => user.client.walk(`${sound.links.annotations}?${q}`).then(ids);
+        const feed = (q: string) => user.client.walk(`${sound.links.annotations.href}?${q}`).then(ids);
         expect(await feed('schema=text@1')).toEqual([text]);
         expect(await feed('kind=text')).toEqual([text]);
         expect(await feed('kind=tags&tags=drums')).toEqual([late]);
         expect(await feed('kind=blob')).toEqual([]);
-        expect((await user.client.get(`${sound.links.annotations}?kind=nope`)).status).toBe(400);
+        expect((await user.client.get(`${sound.links.annotations.href}?kind=nope`)).status).toBe(400);
         expect(await feed('tags=piano')).toEqual([whole, early]);
         expect(await feed('tags=piano,bright')).toEqual([whole]);
         // whole-sound annotations apply to every time range
         expect(await feed('time_range=25-26')).toEqual([whole, late, text]);
         expect(await feed('time_range=5-21')).toEqual([whole, early, late, text]);
-        expect((await user.client.get(`${sound.links.annotations}?time_range=5-1`)).status).toBe(400);
+        expect((await user.client.get(`${sound.links.annotations.href}?time_range=5-1`)).status).toBe(400);
         expect((await user.client.get(`/annotations?time_range=1-2`)).status).toBe(400);
         expect((await user.client.get(`/annotations?schema=nope@1`)).status).toBe(400);
     });
@@ -175,7 +175,7 @@ describe('annotation feeds', () => {
         const res = await user.client.post(sound.links.annotations, {
             annotations: Array.from({ length: 7 }, (_, i) => tags([`t${i}`])),
         });
-        const all = await user.client.walk(`${sound.links.annotations}?page_size=3`);
+        const all = await user.client.walk(`${sound.links.annotations.href}?page_size=3`);
         expect(ids(all)).toEqual(ids(res.body.items));
     });
 

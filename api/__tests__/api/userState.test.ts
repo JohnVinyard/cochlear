@@ -15,7 +15,7 @@ describe('user state documents', () => {
         expect(put.status).toBe(200);
         expect(put.headers.get('etag')).toBe('"1"');
         expect((await user.client.get('/users/me/state')).body).toEqual({ cursor: 41, nested: { a: [1] } });
-        expect((await user.client.get('/users/me')).body.links.state).toMatch(/\/users\/me\/state$/);
+        expect((await user.client.get('/users/me')).body.links.state.href).toMatch(/\/users\/me\/state$/);
     });
 
     it('are written conditionally with If-Match', async () => {

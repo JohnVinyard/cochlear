@@ -86,6 +86,7 @@ annotation-timeline { margin-top: 4px; }
 
 /* sound titles can be long ("Composer: Composition, Movement") */
 td.sound { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr.outside-selection { opacity: 0.4; }
 .lead { font-size: 1.1em; margin-top: -4px; }
 
 /* tags that search for themselves */
@@ -120,4 +121,14 @@ th.number, td.number { text-align: right; font-variant-numeric: tabular-nums; }
 .score-bar .muted { color: #898781; }
 .score-bar button.link { color: #c3c2b7; }
 .rec { color: #e5484d; }
+/* the header's record / pause button (score/RecordButton.tsx) */
+.record-button { width: 26px; height: 26px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center;
+                 justify-content: center; background: transparent; border: 1px solid var(--border); }
+.record-button:hover { border-color: #e5484d; }
+.record-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.record-button.recording { background: #e5484d; border-color: #e5484d; animation: record-pulse 2s ease-in-out infinite; }
+.record-button .icon-record { width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
+.record-button .icon-pause { width: 10px; height: 10px; border-left: 3px solid #fff; border-right: 3px solid #fff; }
+@keyframes record-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.45); } 50% { box-shadow: 0 0 0 4px rgba(229, 72, 77, 0); } }
+@media (prefers-reduced-motion: reduce) { .record-button.recording { animation: none; } }
 body.score-bar-open { padding-bottom: 64px; }

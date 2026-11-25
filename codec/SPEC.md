@@ -201,6 +201,16 @@ Nodes reference audio by URI. A decoder never does I/O itself. Instead:
    fetches and decodes them itself;
 3. **build/render:** the decoder renders, using the audio the host provided.
 
+A decoder SHOULD also say which **spans** of each resource it needs (in
+seconds; an open end is "to the end"), and accept audio for just those
+spans, at an offset, with the resource's total length if the host knows it.
+A sampler that plays half a second from an hour-long recording then needs
+only that half second, which an HTTP host can fetch with a `Range` request.
+Each module decides what it reads. The core sampler needs its slice
+(`start_seconds` to `start_seconds + duration_seconds`), and its `convolve`
+impulse response in full. A host MAY always provide all of a resource
+instead. Spans change what's fetched, never what's heard.
+
 Hosts MUST support:
 
 - `data:` URIs (RFC 2397), base64 or percent-encoded;
@@ -305,6 +315,7 @@ impl Module for Gammatone {
 }
 impl Node for GammatoneNode {
     // fn resources(&self) -> Vec<String>      URIs needed, if any
+    // fn resource_spans(&self) -> Vec<(String, Span)>   which parts of them (default: all)
     // fn children(&self) -> Vec<&Child>       for container nodes
     fn build(&self, cx: &BuildContext) -> Result<Box<dyn Voice>> { … }  // renders
 }

@@ -1,11 +1,14 @@
 import type { LicenseType, SoundFormatResource, SoundResource } from '@cochlea/shared';
 import express, { type Request, type Response, Router } from 'express';
+import { createAnnotationsSchema } from '../../annotations';
+import { annotationPolicy } from '../../annotations/domain';
 import { principalOf } from '../../auth/adapters/express';
-import type { Links } from '../../shared/http/links';
+import type { Principal } from '../../auth/domain';
+import { linkMap, type Links } from '../../shared/http/links';
 import { parseFeedRequest, renderFeedPage } from '../../shared/http/paging';
 import { requireValidBody, requireValidQuery } from '../../shared/http/validation';
 import { type SoundId, toSoundFormatId, toSoundId, toUserId, type UserId } from '../../shared/ids';
-import type { NewSoundFormat, Sound, SoundFormat, SoundsDomain } from '../domain';
+import { type NewSoundFormat, type Sound, type SoundFormat, type SoundsDomain, soundPolicy } from '../domain';
 import createSoundFile from './createSoundRequestBody.schema.json';
 import createSoundFormatFile from './createSoundFormatRequestBody.schema.json';
 import soundFeedQuerySchema from './soundFeedQuery.schema.json';
@@ -23,7 +26,7 @@ export const createSoundSchema = {
     },
 };
 
-export const renderFormat = (links: Links, f: SoundFormat): SoundFormatResource => ({
+export const renderFormat = (links: Links, actor: Principal, f: SoundFormat): SoundFormatResource => ({
     id: f.id,
     sound_id: f.soundId,
     url: f.url,
@@ -31,15 +34,16 @@ export const renderFormat = (links: Links, f: SoundFormat): SoundFormatResource 
     metadata: f.metadata,
     created_by: f.createdBy,
     created_at: f.createdAt.toISOString(),
-    links: {
-        self: links.href(`/sounds/${f.soundId}/formats/${f.id}`),
-        sound: links.href(`/sounds/${f.soundId}`),
-        created_by: links.href(`/users/${f.createdBy}`),
-        file: f.url,
-    },
+    links: linkMap({
+        self: links.get(`/sounds/${f.soundId}/formats/${f.id}`),
+        sound: links.get(`/sounds/${f.soundId}`),
+        created_by: links.get(`/users/${f.createdBy}`),
+        file: links.external(f.url),
+        delete: soundPolicy.deleteFormat(actor, f) && links.delete(`/sounds/${f.soundId}/formats/${f.id}`),
+    }),
 });
 
-export const renderSound = (links: Links, s: Sound): SoundResource => ({
+export const renderSound = (links: Links, actor: Principal, s: Sound): SoundResource => ({
     id: s.id,
     created_at: s.createdAt.toISOString(),
     created_by: s.createdBy,
@@ -48,14 +52,18 @@ export const renderSound = (links: Links, s: Sound): SoundResource => ({
     license_type: s.licenseType,
     title: s.title,
     duration_seconds: s.durationSeconds,
-    formats: s.formats.map((f) => renderFormat(links, f)),
-    links: {
-        self: links.href(`/sounds/${s.id}`),
-        annotations: links.href(`/sounds/${s.id}/annotations`),
-        formats: links.href(`/sounds/${s.id}/formats`),
-        created_by: links.href(`/users/${s.createdBy}`),
-        audio: s.audioUrl,
-    },
+    formats: s.formats.map((f) => renderFormat(links, actor, f)),
+    links: linkMap({
+        self: links.get(`/sounds/${s.id}`),
+        audio: links.external(s.audioUrl),
+        created_by: links.get(`/users/${s.createdBy}`),
+        annotations: annotationPolicy.read(actor) && links.get(`/sounds/${s.id}/annotations`),
+        create_annotations:
+            annotationPolicy.create(actor) && links.post(`/sounds/${s.id}/annotations`, createAnnotationsSchema),
+        formats: links.get(`/sounds/${s.id}/formats`),
+        add_format: soundPolicy.addFormat(actor) && links.post(`/sounds/${s.id}/formats`, createSoundFormatSchema),
+        delete: soundPolicy.delete(actor, s) && links.delete(`/sounds/${s.id}`),
+    }),
 });
 
 interface CreateFormatBody {
@@ -84,11 +92,16 @@ export const router = (domain: SoundsDomain, links: Links): Router => {
 
     const feed = async (req: Request, res: Response, path: string, createdBy: UserId | null) => {
         const q = req.query as Record<string, string | undefined>;
-        const page = await domain.listSounds(principalOf(res), {
+        const actor = principalOf(res);
+        const page = await domain.listSounds(actor, {
             ...parseFeedRequest<SoundId>(req),
             createdBy: createdBy ?? (q.created_by ? toUserId(q.created_by) : null),
         });
-        res.json(renderFeedPage(req, links, path, page, (s) => renderSound(links, s)));
+        res.json(
+            renderFeedPage(req, links, path, page, (s) => renderSound(links, actor, s), {
+                create: soundPolicy.create(actor) && links.post('/sounds', createSoundSchema),
+            })
+        );
     };
 
     r.get('/sounds', requireValidQuery(soundFeedQuerySchema), (req, res) => feed(req, res, '/sounds', null));
@@ -100,7 +113,8 @@ export const router = (domain: SoundsDomain, links: Links): Router => {
 
     r.post('/sounds', express.json(), requireValidBody(createSoundSchema), async (req, res) => {
         const body = req.body as CreateSoundBody;
-        const sound = await domain.createSound(principalOf(res), {
+        const actor = principalOf(res);
+        const sound = await domain.createSound(actor, {
             audioUrl: body.audio_url,
             infoUrl: body.info_url ?? null,
             formats: (body.formats ?? []).map(toNewFormat),
@@ -108,13 +122,14 @@ export const router = (domain: SoundsDomain, links: Links): Router => {
             title: body.title ?? null,
             durationSeconds: body.duration_seconds,
         });
-        const rendered = renderSound(links, sound);
-        res.status(201).location(rendered.links.self!).json(rendered);
+        const rendered = renderSound(links, actor, sound);
+        res.status(201).location(rendered.links.self!.href).json(rendered);
     });
 
     r.get('/sounds/:soundId', async (req, res) => {
-        const sound = await domain.getSound(principalOf(res), toSoundId(req.params.soundId));
-        res.json(renderSound(links, sound));
+        const actor = principalOf(res);
+        const sound = await domain.getSound(actor, toSoundId(req.params.soundId));
+        res.json(renderSound(links, actor, sound));
     });
 
     r.delete('/sounds/:soundId', async (req, res) => {
@@ -123,27 +138,37 @@ export const router = (domain: SoundsDomain, links: Links): Router => {
     });
 
     r.get('/sounds/:soundId/formats', async (req, res) => {
-        const sound = await domain.getSound(principalOf(res), toSoundId(req.params.soundId));
-        res.json({ items: sound.formats.map((f) => renderFormat(links, f)) });
+        const actor = principalOf(res);
+        const sound = await domain.getSound(actor, toSoundId(req.params.soundId));
+        res.json({
+            items: sound.formats.map((f) => renderFormat(links, actor, f)),
+            links: linkMap({
+                self: links.get(`/sounds/${sound.id}/formats`),
+                sound: links.get(`/sounds/${sound.id}`),
+                create: soundPolicy.addFormat(actor) && links.post(`/sounds/${sound.id}/formats`, createSoundFormatSchema),
+            }),
+        });
     });
 
     r.post('/sounds/:soundId/formats', express.json(), requireValidBody(createSoundFormatSchema), async (req, res) => {
+        const actor = principalOf(res);
         const format = await domain.addFormat(
-            principalOf(res),
+            actor,
             toSoundId(req.params.soundId),
             toNewFormat(req.body as CreateFormatBody)
         );
-        const rendered = renderFormat(links, format);
-        res.status(201).location(rendered.links.self!).json(rendered);
+        const rendered = renderFormat(links, actor, format);
+        res.status(201).location(rendered.links.self!.href).json(rendered);
     });
 
     r.get('/sounds/:soundId/formats/:formatId', async (req, res) => {
+        const actor = principalOf(res);
         const format = await domain.getFormat(
-            principalOf(res),
+            actor,
             toSoundId(req.params.soundId),
             toSoundFormatId(req.params.formatId)
         );
-        res.json(renderFormat(links, format));
+        res.json(renderFormat(links, actor, format));
     });
 
     r.delete('/sounds/:soundId/formats/:formatId', async (req, res) => {

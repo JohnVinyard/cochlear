@@ -1,0 +1,5 @@
+{
+    "$id": "PutMyStateRequestBody",
+    "description": "Your state document: any JSON object of at most 64 KB",
+    "type": "object"
+}

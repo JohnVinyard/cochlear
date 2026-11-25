@@ -90,6 +90,9 @@ T=$(docker compose exec -T api yarn -s cli dev-token you@example.com)
 curl -H "Authorization: Bearer $T" localhost:8080/v1/          # follow the links from here
 ```
 
+Each response's `links` say what you can do next: `{href, method, schema?}`,
+showing only the actions you're allowed to take. See `docs/links.md`.
+
 To create API keys, use the web app (`/api-keys`) or `POST /v1/api-keys` with
 a firebase token.
 

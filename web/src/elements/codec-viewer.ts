@@ -9,18 +9,25 @@
  *   base-url    for relative URIs in the document (default: `src`, else the page)
  *
  * Properties:
- *   document    a document (object or JSON string), instead of `src`
+ *   document    a document (object or JSON string), instead of `src`. Setting it resets the view.
  *   maxDepth    reflects `max-depth`
+ *   selection   the selected span of time, { start_seconds, end_seconds } or null
  *
- * Methods:  play(path?), stop()
+ * Methods:
+ *   play(path?, fromSeconds?, untilSeconds?), playSelection(), stop()
+ *   update(document)   replaces the document but keeps the view (expanded nodes, the
+ *                      selection, playback), e.g. for a document that grows as it's recorded
  *
  * Events:
- *   codec-loaded          detail: { description, modules }
- *   codec-error           detail: { path, message }
- *   codec-node-selected   detail: { path }
+ *   codec-loaded              detail: { description, modules }
+ *   codec-error               detail: { path, message }
+ *   codec-node-selected       detail: { path }
+ *   codec-selection-changed   detail: { selection }  (as the user drags, and when it's set)
  *
  * The timeline draws every leaf node (sampler, gammatone, ...) at the time it
  * plays; click a bar to find its node, or empty space to play from there.
+ * Drag across it to select a span of time (drag an edge of the selection to
+ * adjust it); the toolbar plays or clears it.
  * Every node in the tree can be played on its own, in context. Selecting a
  * node that came from a `$ref` highlights everywhere its definition plays.
  */
@@ -32,6 +39,12 @@ import {
     type OpenDocument,
     type Playback,
 } from '../codec/runtime';
+
+/** A span of document time */
+export interface Selection {
+    start_seconds: number;
+    end_seconds: number;
+}
 
 const COMMON_KEYS = new Set(['type', 'label', 'meta']);
 const CHILDREN_PAGE = 200;
@@ -105,6 +118,7 @@ const formatValue = (key: string, v: unknown, depth = 0): string => {
 
 const STYLE = `
 :host { display: block; font: inherit; color: inherit; }
+[hidden] { display: none !important; }
 .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
 button { font: inherit; cursor: pointer; border: 1px solid var(--border, #d0d4db); border-radius: 6px;
          background: var(--panel, #f6f7f9); color: inherit; padding: 2px 10px; }
@@ -114,7 +128,7 @@ button:hover { border-color: var(--accent, #3b6fe0); }
          border: 1px solid currentColor; border-radius: 6px; padding: 8px; margin: 8px 0; }
 .timeline { position: relative; border: 1px solid var(--border, #d0d4db); border-radius: 6px; overflow: hidden;
             background: var(--panel, #f6f7f9); margin-bottom: 10px; }
-canvas { display: block; width: 100%; cursor: crosshair; }
+canvas { display: block; width: 100%; cursor: crosshair; touch-action: pan-y; }
 .ruler { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted, #6b7280); padding: 0 4px; }
 .tree { font-size: 13px; }
 .row { display: flex; gap: 6px; align-items: baseline; padding: 1px 4px; border-radius: 4px; cursor: default;
@@ -132,6 +146,9 @@ canvas { display: block; width: 100%; cursor: crosshair; }
 .children { margin-left: 16px; border-left: 1px solid var(--border, #d0d4db); padding-left: 4px; }
 .collapsed { color: var(--muted, #6b7280); cursor: pointer; font-size: 12px; }
 .legend { display: inline-flex; gap: 10px; font-size: 12px; }
+.selection { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.selection .hint { color: var(--muted, #6b7280); }
+button.clear { padding: 0 6px; line-height: 18px; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
 `;
 
@@ -157,6 +174,13 @@ export class CodecViewer extends HTMLElement {
     private frame: number | null = null;
     private loadToken = 0;
     private resizeObserver = new ResizeObserver(() => this.drawTimeline());
+    private _selection: Selection | null = null;
+    /** While dragging on the timeline: the fixed end of the selection */
+    private drag: { anchor: number; x0: number; moved: boolean } | null = null;
+    /** A drag ends with a click, which mustn't also play or select a node */
+    private suppressClick = false;
+    /** When playing up to a time (the selection), where to stop */
+    private stopAt: number | null = null;
 
     constructor() {
         super();
@@ -164,6 +188,12 @@ export class CodecViewer extends HTMLElement {
         this.shadowRoot!.innerHTML = `<style>${STYLE}</style>
             <div class="toolbar">
                 <button data-action="play-all">▶ Play</button>
+                <span class="selection">
+                    <span class="hint">drag on the timeline to select</span>
+                    <span class="range" hidden></span>
+                    <button data-action="play-selection" hidden>▶ Play selection</button>
+                    <button class="clear" data-action="clear-selection" title="Clear the selection" hidden>✕</button>
+                </span>
                 <span class="status"></span>
                 <span class="legend"></span>
             </div>
@@ -171,6 +201,11 @@ export class CodecViewer extends HTMLElement {
             <div class="timeline" hidden><canvas></canvas><div class="ruler"></div></div>
             <div class="tree"></div>`;
         this.shadowRoot!.addEventListener('click', (e) => this.onClick(e as MouseEvent));
+        const canvas = this.shadowRoot!.querySelector('canvas')!;
+        canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e, canvas));
+        canvas.addEventListener('pointermove', (e) => this.onPointerMove(e, canvas));
+        canvas.addEventListener('pointerup', (e) => this.onPointerUp(e, canvas));
+        canvas.addEventListener('pointercancel', () => (this.drag = null));
     }
 
     connectedCallback() {
@@ -209,23 +244,40 @@ export class CodecViewer extends HTMLElement {
 
     set document(doc: unknown) {
         this._document = doc;
+        this._selection = null;
         this.load();
+    }
+
+    update(doc: unknown) {
+        this._document = doc;
+        // nothing to keep the first time
+        this.load(this.open !== null);
+    }
+
+    get selection(): Selection | null {
+        return this._selection ? { ...this._selection } : null;
+    }
+
+    set selection(s: Selection | null) {
+        this.setSelection(s && s.end_seconds > s.start_seconds ? { ...s } : null);
     }
 
     private get runtime() {
         return CodecRuntime.shared(this.getAttribute('wasm-src') ?? DEFAULT_WASM_URL);
     }
 
-    private async load() {
+    private async load(keepView = false) {
         const token = ++this.loadToken;
-        this.stop();
-        this.open = null;
         this.error = null;
-        this.selected = null;
-        this.expanded.clear();
-        this.shownChildren.clear();
-        this.setStatus('Loading…');
-        this.renderAll();
+        if (!keepView) {
+            this.stop();
+            this.open = null;
+            this.selected = null;
+            this.expanded.clear();
+            this.shownChildren.clear();
+            this.setStatus('Loading…');
+            this.renderAll();
+        }
         try {
             let doc = this._document;
             const src = this.getAttribute('src');
@@ -247,6 +299,14 @@ export class CodecViewer extends HTMLElement {
             this.open = open;
             this.index(open);
             const d = open.description;
+            if (this.selected && !open.node(this.selected)) this.selected = null;
+            // a selection beyond the (new) end is clamped, or dropped
+            const sel = this._selection;
+            if (sel && (sel.start_seconds >= d.duration_seconds || sel.end_seconds > d.duration_seconds)) {
+                this.setSelection(
+                    sel.start_seconds >= d.duration_seconds ? null : { ...sel, end_seconds: d.duration_seconds }
+                );
+            }
             this.setStatus(
                 `${seconds(d.duration_seconds)} · ${d.nodes.length} nodes · ${open.resources.length} resources · ` +
                     open.modules.map((m) => `${m.type}@${m.version}`).join(', ')
@@ -310,13 +370,15 @@ export class CodecViewer extends HTMLElement {
 
     // -- playback -------------------------------------------------------------
 
-    async play(path?: string, fromSeconds = 0) {
+    /** Plays one node in context, or everything from `fromSeconds` (until `untilSeconds`, if given) */
+    async play(path?: string, fromSeconds = 0, untilSeconds?: number) {
         if (!this.open) return;
         this.stop();
         try {
             const playback = await this.open.play({ path: path ?? '', fromSeconds });
             this.playback = playback;
             this.playingPath = path ?? null;
+            this.stopAt = untilSeconds ?? null;
             this.renderToolbar();
             this.tick();
             playback.ended
@@ -333,10 +395,16 @@ export class CodecViewer extends HTMLElement {
         }
     }
 
+    playSelection() {
+        const s = this._selection;
+        if (s) return this.play(undefined, s.start_seconds, s.end_seconds);
+    }
+
     stop() {
         const p = this.playback;
         this.playback = null;
         this.playingPath = null;
+        this.stopAt = null;
         p?.stop();
         if (this.frame !== null) cancelAnimationFrame(this.frame);
         this.frame = null;
@@ -345,6 +413,7 @@ export class CodecViewer extends HTMLElement {
     }
 
     private tick() {
+        if (this.playback && this.stopAt !== null && this.playback.position() >= this.stopAt) return this.stop();
         this.drawTimeline();
         if (this.playback) this.frame = requestAnimationFrame(() => this.tick());
     }
@@ -360,6 +429,10 @@ export class CodecViewer extends HTMLElement {
         switch (el.dataset.action) {
             case 'play-all':
                 return this.playback ? this.stop() : this.play();
+            case 'play-selection':
+                return this.playback && this.stopAt !== null ? this.stop() : this.playSelection();
+            case 'clear-selection':
+                return this.setSelection(null);
             case 'play':
                 return this.playingPath === path ? this.stop() : this.play(path);
             case 'toggle':
@@ -373,7 +446,73 @@ export class CodecViewer extends HTMLElement {
         }
     }
 
+    /** The document time under the pointer, within the document */
+    private timeAt(e: MouseEvent, canvas: HTMLCanvasElement): number {
+        const rect = canvas.getBoundingClientRect();
+        const duration = this.open?.description.duration_seconds ?? 0;
+        return Math.min(Math.max(((e.clientX - rect.left) / rect.width) * duration, 0), duration);
+    }
+
+    /** Which edge of the selection (if any) is within a few pixels of the pointer */
+    private edgeAt(e: MouseEvent, canvas: HTMLCanvasElement): 'start' | 'end' | null {
+        const s = this._selection;
+        const duration = this.open?.description.duration_seconds;
+        if (!s || !duration) return null;
+        const rect = canvas.getBoundingClientRect();
+        const x = (t: number) => rect.left + (t / duration) * rect.width;
+        if (Math.abs(e.clientX - x(s.start_seconds)) <= 5) return 'start';
+        if (Math.abs(e.clientX - x(s.end_seconds)) <= 5) return 'end';
+        return null;
+    }
+
+    private onPointerDown(e: PointerEvent, canvas: HTMLCanvasElement) {
+        if (!this.open || e.button !== 0) return;
+        const edge = this.edgeAt(e, canvas);
+        const s = this._selection;
+        // grabbing an edge moves it: the other one stays put
+        const anchor = edge && s ? (edge === 'start' ? s.end_seconds : s.start_seconds) : this.timeAt(e, canvas);
+        this.drag = { anchor, x0: e.clientX, moved: edge !== null };
+        canvas.setPointerCapture(e.pointerId);
+    }
+
+    private onPointerMove(e: PointerEvent, canvas: HTMLCanvasElement) {
+        if (!this.drag) {
+            canvas.style.cursor = this.edgeAt(e, canvas) ? 'ew-resize' : '';
+            return;
+        }
+        if (!this.drag.moved && Math.abs(e.clientX - this.drag.x0) < 4) return;
+        this.drag.moved = true;
+        const t = this.timeAt(e, canvas);
+        const { anchor } = this.drag;
+        this.setSelection({ start_seconds: Math.min(anchor, t), end_seconds: Math.max(anchor, t) });
+    }
+
+    private onPointerUp(e: PointerEvent, canvas: HTMLCanvasElement) {
+        const drag = this.drag;
+        this.drag = null;
+        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+        if (!drag?.moved) return;
+        this.suppressClick = true;
+        const s = this._selection;
+        if (s && s.end_seconds - s.start_seconds < 1e-3) this.setSelection(null);
+    }
+
+    private setSelection(s: Selection | null, notify = true) {
+        const old = this._selection;
+        if (old?.start_seconds === s?.start_seconds && old?.end_seconds === s?.end_seconds) return;
+        this._selection = s;
+        // a selection that's playing stops where the selection now ends
+        if (this.playback && this.stopAt !== null) this.stopAt = s?.end_seconds ?? null;
+        this.renderSelection();
+        this.drawTimeline();
+        if (notify) this.dispatchEvent(new CustomEvent('codec-selection-changed', { detail: { selection: this.selection } }));
+    }
+
     private onTimelineClick(e: MouseEvent, canvas: HTMLCanvasElement) {
+        if (this.suppressClick) {
+            this.suppressClick = false;
+            return;
+        }
         if (!this.open) return;
         const rect = canvas.getBoundingClientRect();
         const t = ((e.clientX - rect.left) / rect.width) * this.open.description.duration_seconds;
@@ -418,14 +557,32 @@ export class CodecViewer extends HTMLElement {
             .join('');
         this.setStatus(this.status);
         this.renderToolbar();
+        this.renderSelection();
         this.renderTree();
         this.drawTimeline();
+    }
+
+    private renderSelection() {
+        const root = this.shadowRoot!;
+        const s = this._selection;
+        root.querySelector<HTMLElement>('.selection')!.hidden = !this.open;
+        root.querySelector<HTMLElement>('.selection .hint')!.hidden = !!s;
+        const range = root.querySelector<HTMLElement>('.selection .range')!;
+        range.hidden = !s;
+        range.textContent = s
+            ? `${seconds(s.start_seconds)}–${seconds(s.end_seconds)} (${seconds(s.end_seconds - s.start_seconds)})`
+            : '';
+        root.querySelector<HTMLElement>('[data-action="play-selection"]')!.hidden = !s;
+        root.querySelector<HTMLElement>('[data-action="clear-selection"]')!.hidden = !s;
+        this.renderToolbar();
     }
 
     private renderToolbar() {
         const button = this.shadowRoot!.querySelector<HTMLButtonElement>('[data-action="play-all"]')!;
         button.disabled = !this.open;
         button.textContent = this.playback ? '■ Stop' : '▶ Play';
+        const selection = this.shadowRoot!.querySelector<HTMLButtonElement>('[data-action="play-selection"]')!;
+        selection.textContent = this.playback && this.stopAt !== null ? '■ Stop' : '▶ Play selection';
         this.shadowRoot!.querySelectorAll<HTMLElement>('[data-action="play"]').forEach((b) => {
             b.textContent = b.dataset.path === this.playingPath ? '■' : '▶';
         });
@@ -520,6 +677,18 @@ export class CodecViewer extends HTMLElement {
             }
         });
         g.globalAlpha = 1;
+        const sel = this._selection;
+        if (sel) {
+            const x0 = (sel.start_seconds / duration) * width;
+            const x1 = (sel.end_seconds / duration) * width;
+            g.fillStyle = getComputedStyle(this).getPropertyValue('--accent').trim() || '#3b6fe0';
+            g.globalAlpha = 0.18;
+            g.fillRect(x0, 0, x1 - x0, height);
+            g.globalAlpha = 0.9;
+            g.fillRect(x0 - 0.75, 0, 1.5, height);
+            g.fillRect(x1 - 0.75, 0, 1.5, height);
+            g.globalAlpha = 1;
+        }
         if (this.playback) {
             const x = (this.playback.position() / duration) * width;
             g.fillStyle = getComputedStyle(this).getPropertyValue('--danger').trim() || '#d13b3b';

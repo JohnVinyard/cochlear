@@ -89,7 +89,30 @@ export type LicenseType = (typeof LICENSE_TYPES)[number];
 // API resource representations (wire format, snake_case)
 // ---------------------------------------------------------------------------
 
-export type Links = Record<string, string>;
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+export type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/**
+ * Something the client can do next. A resource's links reflect who's asking:
+ * an action appears only if the requester is allowed to do it, e.g. a sound
+ * has a `delete` link only for its creator (see docs/links.md).
+ */
+export interface Link {
+    /** Absolute URL */
+    href: string;
+    method: HttpMethod;
+    /**
+     * For JSON bodies (POST, PUT, PATCH): the absolute URL of the JSON schema
+     * the body must match, served by the API (`GET /schemas/{name}`).
+     */
+    schema?: string;
+}
+
+/**
+ * Keyed by relation. Reads are nouns (`self`, `annotations`); actions are
+ * verbs (`delete`, `create_annotations`).
+ */
+export type Links = Record<string, Link>;
 
 export interface Page<T> {
     items: T[];

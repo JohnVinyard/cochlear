@@ -344,3 +344,98 @@ fn versions_compare_as_numbers() {
     assert!(version("0.10").is_err());
     assert!(version("1.0").is_err());
 }
+
+// -- parts of resources -------------------------------------------------------
+
+#[test]
+fn asks_for_only_the_parts_of_resources_samplers_play() {
+    let d = Decoder::new(RATE);
+    let document = d
+        .parse_value(&doc(json!({ "type": "sequencer", "events": [
+            at(0.0, json!({ "type": "sampler", "url": "long", "start_seconds": 10, "duration_seconds": 1 })),
+            // overlaps the first: merged
+            at(1.0, json!({ "type": "sampler", "url": "long", "start_seconds": 10.5, "duration_seconds": 1 })),
+            at(2.0, json!({ "type": "sampler", "url": "long", "start_seconds": 100, "duration_seconds": 0.5 })),
+            // no duration: to the end; an impulse response: all of it
+            at(3.0, json!({ "type": "sampler", "url": "other", "start_seconds": 2,
+                            "convolve": { "url": "room", "mix": 0.5 } })),
+        ] })))
+        .unwrap();
+    assert_eq!(
+        d.resource_requests(&document),
+        vec![
+            ResourceRequest { uri: "long".into(), spans: vec![Span::new(10.0, Some(11.5)), Span::new(100.0, Some(100.5))] },
+            ResourceRequest { uri: "other".into(), spans: vec![Span::new(2.0, None)] },
+            ResourceRequest { uri: "room".into(), spans: vec![Span::WHOLE] },
+        ]
+    );
+}
+
+#[test]
+fn renders_from_parts_of_resources() {
+    let mut d = Decoder::new(RATE);
+    let document = d
+        .parse_value(&doc(json!({ "type": "sequencer", "events": [
+            at(0.0, json!({ "type": "sampler", "url": "long", "start_seconds": 10, "duration_seconds": 0.2 })),
+        ] })))
+        .unwrap();
+    // RATE is 100: 20 frames, from frame 1000 of an hour-long sound
+    let ramp: Vec<f32> = (0..20).map(|i| i as f32).collect();
+    d.provide_span("long", 10.0, Audio::new(RATE, ramp.clone()), Some(3600.0));
+    assert!(d.resource_requests(&document).is_empty());
+    assert_eq!(d.render(&document).unwrap().render_all().samples, ramp);
+
+    // a part elsewhere doesn't help
+    let mut d = Decoder::new(RATE);
+    d.provide_span("long", 20.0, Audio::new(RATE, ramp.clone()), Some(3600.0));
+    assert_eq!(d.missing_resources(&document), vec!["long"]);
+    assert!(d.render(&document).err().unwrap().message.contains("resources not loaded: long"));
+}
+
+#[test]
+fn clamps_parts_to_the_resource_length() {
+    let mut d = Decoder::new(RATE);
+    let render = |d: &Decoder, node: Value| d.render(&d.parse_value(&doc(node)).unwrap()).map(|mut r| r.render_all().samples);
+    // the sound is 1.1 s long; the sampler asks for a second from 1.0
+    d.provide_span("short", 1.0, Audio::new(RATE, vec![1.0; 10]), Some(1.1));
+    let node = json!({ "type": "sampler", "url": "short", "start_seconds": 1.0, "duration_seconds": 1.0 });
+    assert!(d.resource_requests(&d.parse_value(&doc(node.clone())).unwrap()).is_empty());
+    assert_eq!(render(&d, node).unwrap().len(), 10);
+    // and starting past the end is still an error, given the length
+    let past = json!({ "type": "sampler", "url": "short", "start_seconds": 2.0, "duration_seconds": 0.1 });
+    assert!(render(&d, past).err().unwrap().message.contains("past the end"));
+}
+
+#[test]
+fn resamples_parts_at_their_offsets() {
+    let mut d = Decoder::new(RATE);
+    // half the output rate, a second of it, starting 5 s in: frame 500 at the output rate
+    d.provide_span("x", 5.0, Audio::new(RATE / 2.0, vec![1.0; 50]), None);
+    let document =
+        d.parse_value(&doc(json!({ "type": "sampler", "url": "x", "start_seconds": 5.5, "duration_seconds": 0.4 }))).unwrap();
+    assert!(d.resource_requests(&document).is_empty());
+    let samples = d.render(&document).unwrap().render_all().samples;
+    assert_eq!(samples.len(), 40);
+    assert!(samples.iter().all(|s| *s == 1.0));
+}
+
+#[test]
+fn needs_all_of_an_impulse_response() {
+    let mut d = Decoder::new(RATE);
+    d.provide("a", click());
+    d.provide_span("room", 0.0, Audio::new(RATE, vec![1.0; 3]), None);
+    let document = d
+        .parse_value(&doc(json!({ "type": "sampler", "url": "a", "convolve": { "url": "room", "mix": 0.5 } })))
+        .unwrap();
+    // its length isn't known, so a part that starts at 0 might not be all of it
+    assert_eq!(d.missing_resources(&document), vec!["room"]);
+    d.provide("room", Audio::new(RATE, vec![1.0; 3]));
+    assert!(d.render(&document).is_ok());
+}
+
+#[test]
+fn merges_spans() {
+    let s = |a: f64, b: Option<f64>| Span::new(a, b);
+    assert_eq!(merge_spans(vec![s(5.0, Some(6.0)), s(0.0, Some(1.0)), s(1.0, Some(2.0))]), vec![s(0.0, Some(2.0)), s(5.0, Some(6.0))]);
+    assert_eq!(merge_spans(vec![s(3.0, None), s(4.0, Some(9.0)), s(0.0, Some(1.0))]), vec![s(0.0, Some(1.0)), s(3.0, None)]);
+}

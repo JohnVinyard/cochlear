@@ -1,5 +1,5 @@
 import type { LicenseType } from '@cochlea/shared';
-import { type Principal, requireRole } from '../auth/domain';
+import { hasRole, type Principal, requireRole } from '../auth/domain';
 import { Conflict, Gone, InvalidRequest, NotFound, PermissionDenied } from '../shared/errors';
 import type { SoundFormatId, SoundId, UserId } from '../shared/ids';
 import { type FeedPage, type FeedRequest } from '../shared/paging';
@@ -106,6 +106,24 @@ export interface SoundsDomain {
 }
 
 // ---------------------------------------------------------------------------
+// Policy: who may do what. The use cases enforce it; the HTTP adapter offers
+// a link for an action only when it allows it.
+// ---------------------------------------------------------------------------
+
+const isCreator = (actor: Principal, thing: { createdBy: UserId }) => thing.createdBy === actor.user.id;
+
+export const soundPolicy = {
+    read: (actor: Principal) => hasRole(actor, 'SOUND_READER'),
+    create: (actor: Principal) => hasRole(actor, 'SOUND_EDITOR'),
+    /** of any sound, not only your own */
+    addFormat: (actor: Principal) => hasRole(actor, 'SOUND_EDITOR'),
+    delete: (actor: Principal, sound: Pick<Sound, 'createdBy'>) =>
+        hasRole(actor, 'SOUND_EDITOR') && isCreator(actor, sound),
+    deleteFormat: (actor: Principal, format: Pick<SoundFormat, 'createdBy'>) =>
+        hasRole(actor, 'SOUND_EDITOR') && isCreator(actor, format),
+};
+
+// ---------------------------------------------------------------------------
 // Implementation
 // ---------------------------------------------------------------------------
 
@@ -201,7 +219,7 @@ export const buildSoundsDomain = (persistence: SoundsPersistence): SoundsDomain 
         async deleteFormat(actor, soundId, id) {
             requireRole(actor, 'SOUND_EDITOR');
             const format = await mustGetFormat(soundId, id);
-            if (format.createdBy !== actor.user.id) {
+            if (!soundPolicy.deleteFormat(actor, format)) {
                 throw new PermissionDenied('only the creator of a format may delete it');
             }
             await persistence.markFormatDeleted(id, actor.user.id);
@@ -220,7 +238,7 @@ export const buildSoundsDomain = (persistence: SoundsPersistence): SoundsDomain 
         async deleteSound(actor, id) {
             requireRole(actor, 'SOUND_EDITOR');
             const sound = await mustGet(id);
-            if (sound.createdBy !== actor.user.id) {
+            if (!soundPolicy.delete(actor, sound)) {
                 throw new PermissionDenied('only the creator of a sound may delete it');
             }
             await persistence.markDeleted(id, actor.user.id);

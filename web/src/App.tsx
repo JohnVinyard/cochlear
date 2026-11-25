@@ -5,6 +5,7 @@ import { ApiDocsPage } from './pages/ApiDocs';
 import { CodecLab } from './pages/CodecLab';
 import { FavoritesPage } from './pages/Favorites';
 import { ScorePage } from './pages/Score';
+import { RecordButton } from './score/RecordButton';
 import { ScoreBar } from './score/ScoreBar';
 import { useScore } from './score/store';
 import { LabsPage } from './pages/Labs';
@@ -78,6 +79,7 @@ const Layout = () => {
                 <NavLink to="/api-docs">API</NavLink>
                 <NavLink to="/labs" end>Labs</NavLink>
                 <span className="spacer" />
+                <RecordButton />
                 <NavLink to="/me">{user.email}</NavLink>
                 <NavLink to="/api-keys">API keys</NavLink>
                 <button className="link" onClick={() => logOut()}>Sign out</button>

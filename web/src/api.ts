@@ -1,4 +1,4 @@
-import type { ErrorBody, Page } from '@cochlea/shared';
+import type { ErrorBody, Link, Page } from '@cochlea/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { auth } from './auth';
 import { config } from './config';
@@ -30,6 +30,9 @@ export const api = async <T,>(hrefOrPath: string, init: { method?: string; body?
     if (!res.ok) throw new ApiError(res.status, (body as ErrorBody).errors ?? []);
     return body as T;
 };
+
+/** Does what a link says: its method, at its href, with `body` (which should match `link.schema`) */
+export const follow = <T,>(link: Link, body?: unknown): Promise<T> => api<T>(link.href, { method: link.method, body });
 
 /**
  * Translates an API href into the equivalent web app route:  the app's

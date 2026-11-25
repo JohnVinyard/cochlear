@@ -29,7 +29,7 @@ describe('annotation schemas', () => {
         const v1 = await owner.client.post('/annotation-schemas', { name, kind: 'vector', vector_dim: 13, description: 'mean mfcc' });
         expect(v1.status).toBe(201);
         expect(v1.body).toMatchObject({ ref: `${name}@1`, vector_dim: 13, created_by: owner.id });
-        expect(v1.headers.get('location')).toBe(v1.body.links.self);
+        expect(v1.headers.get('location')).toBe(v1.body.links.self.href);
 
         const v2 = await owner.client.post('/annotation-schemas', { name, kind: 'vector', vector_dim: 20 });
         expect(v2.body.ref).toBe(`${name}@2`);

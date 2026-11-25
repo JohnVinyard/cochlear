@@ -4,7 +4,7 @@ import { StarButton, useFavorites } from '../favorites';
 /** The signed-in user's favorites, newest first */
 export const FavoritesPage = () => {
     const { favorites, status } = useFavorites();
-    const sounds = useSounds(favorites.map((a) => a.links.sound!));
+    const sounds = useSounds(favorites.map((a) => a.links.sound!.href));
     return (
         <>
             <h1>Favorites</h1>
@@ -34,7 +34,7 @@ export const FavoritesPage = () => {
                             return (
                                 <tr key={a.id}>
                                     <td><StarButton soundId={a.sound_id} span={span} /></td>
-                                    <td><SoundLink href={a.links.sound!} id={a.sound_id} sound={sounds.get(a.links.sound!)} /></td>
+                                    <td><SoundLink href={a.links.sound!.href} id={a.sound_id} sound={sounds.get(a.links.sound!.href)} /></td>
                                     <td>{span ? `${formatSeconds(a.start_seconds)} – ${formatSeconds(a.end_seconds)}` : 'whole sound'}</td>
                                     <td>{new Date(a.created_at).toLocaleString()}</td>
                                 </tr>

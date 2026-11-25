@@ -16,6 +16,10 @@
 //! let audio = decoder.render(&doc).unwrap().render_all();
 //! assert_eq!(audio.samples.len(), 4010);
 //! ```
+//!
+//! Hosts that can load parts of a resource (HTTP range requests) ask for
+//! [`Decoder::resource_requests`] instead, and supply each part with
+//! [`Decoder::provide_span`].
 
 pub mod audio;
 pub mod dsp;
@@ -23,10 +27,10 @@ mod error;
 pub mod modules;
 pub mod node;
 mod refs;
+pub mod resources;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -34,6 +38,7 @@ use serde_json::Value;
 pub use audio::Audio;
 pub use error::{Error, Result};
 pub use node::{BufferVoice, BuildContext, Child, Module, Node, NodeLayout, NodeRef, ParseContext, Voice};
+pub use resources::{merge_spans, Resource, ResourceRequest, Span};
 
 pub const FORMAT: &str = "cochlea-codec";
 /// The document format version this decoder reads (and any earlier minor version)
@@ -88,7 +93,7 @@ pub struct ModuleInfo {
 pub struct Decoder {
     modules: HashMap<&'static str, Box<dyn Module>>,
     sample_rate: f64,
-    resources: HashMap<String, Arc<Audio>>,
+    resources: HashMap<String, Resource>,
 }
 
 impl Decoder {
@@ -199,10 +204,22 @@ impl Decoder {
         Ok(())
     }
 
-    /// Supplies decoded audio for a URI. It's resampled to the output rate.
+    /// Supplies all of a URI's decoded audio. It's resampled to the output rate.
     pub fn provide(&mut self, uri: impl Into<String>, audio: Audio) {
         let audio = audio.resampled(self.sample_rate);
-        self.resources.insert(uri.into(), Arc::new(audio));
+        self.resources.insert(uri.into(), Resource::whole(audio));
+    }
+
+    /// Supplies part of a URI's decoded audio: `audio` starts `offset_seconds`
+    /// into the resource, whose whole length is `total_seconds`, if known
+    /// (it's what a sampler's `duration_seconds` is clamped to). Parts may
+    /// overlap; each read comes from one part. See [`Decoder::resource_requests`].
+    pub fn provide_span(&mut self, uri: impl Into<String>, offset_seconds: f64, audio: Audio, total_seconds: Option<f64>) {
+        let rate = self.sample_rate;
+        let audio = audio.resampled(rate);
+        let start = (offset_seconds.max(0.0) * rate).round() as usize;
+        let total = total_seconds.map(|t| (t.max(0.0) * rate).round() as usize);
+        self.resources.entry(uri.into()).or_default().add(start, audio, total);
     }
 
     /// Supplies an encoded file (only WAV is supported natively)
@@ -225,9 +242,36 @@ impl Decoder {
         Ok(())
     }
 
-    /// The document's URIs that haven't been provided yet
+    /// The document's URIs that haven't been provided yet (or not all the
+    /// parts of them it needs)
     pub fn missing_resources(&self, doc: &Document) -> Vec<String> {
-        doc.resources().into_iter().filter(|r| !self.resources.contains_key(r)).collect()
+        self.resource_requests(doc).into_iter().map(|r| r.uri).collect()
+    }
+
+    /// What the document still needs: for each URI, the spans of it that
+    /// haven't been provided, merged where they overlap. A host that can't
+    /// load parts of a resource can [`provide`](Decoder::provide) all of it
+    /// instead.
+    pub fn resource_requests(&self, doc: &Document) -> Vec<ResourceRequest> {
+        let mut order: Vec<String> = Vec::new();
+        let mut spans: HashMap<String, Vec<Span>> = HashMap::new();
+        for (uri, span) in doc.root.resource_spans() {
+            let covered = self.resources.get(&uri).is_some_and(|r| r.covers(span, self.sample_rate));
+            if covered {
+                continue;
+            }
+            if !spans.contains_key(&uri) {
+                order.push(uri.clone());
+            }
+            spans.entry(uri).or_default().push(span);
+        }
+        order
+            .into_iter()
+            .map(|uri| {
+                let spans = merge_spans(spans.remove(&uri).unwrap_or_default());
+                ResourceRequest { uri, spans }
+            })
+            .collect()
     }
 
     /// Prepares the whole document for rendering

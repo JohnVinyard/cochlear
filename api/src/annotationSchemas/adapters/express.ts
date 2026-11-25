@@ -1,14 +1,16 @@
 import type { AnnotationKind, AnnotationSchemaResource } from '@cochlea/shared';
 import express, { Router } from 'express';
+import { annotationPolicy } from '../../annotations/domain';
 import { principalOf } from '../../auth/adapters/express';
+import type { Principal } from '../../auth/domain';
 import { feedQuerySchemaProperties, parseFeedRequest, renderFeedPage } from '../../shared/http/paging';
-import type { Links } from '../../shared/http/links';
+import { linkMap, type Links } from '../../shared/http/links';
 import { requireValidBody, requireValidQuery } from '../../shared/http/validation';
 import type { AnnotationSchemaId } from '../../shared/ids';
-import { type AnnotationSchema, type AnnotationSchemasDomain, schemaRef } from '../domain';
+import { type AnnotationSchema, annotationSchemaPolicy, type AnnotationSchemasDomain, schemaRef } from '../domain';
 import createSchema from './createAnnotationSchemaRequestBody.schema.json';
 
-export const renderAnnotationSchema = (links: Links, s: AnnotationSchema): AnnotationSchemaResource => ({
+export const renderAnnotationSchema = (links: Links, actor: Principal, s: AnnotationSchema): AnnotationSchemaResource => ({
     id: s.id,
     name: s.name,
     version: s.version,
@@ -20,11 +22,11 @@ export const renderAnnotationSchema = (links: Links, s: AnnotationSchema): Annot
     created_at: s.createdAt.toISOString(),
     created_by: s.createdBy,
     annotation_count: s.annotationCount,
-    links: {
-        self: links.href(`/annotation-schemas/${schemaRef(s)}`),
-        annotations: links.href('/annotations', { schema: schemaRef(s) }),
-        created_by: links.href(`/users/${s.createdBy}`),
-    },
+    links: linkMap({
+        self: links.get(`/annotation-schemas/${schemaRef(s)}`),
+        annotations: annotationPolicy.read(actor) && links.get('/annotations', { schema: schemaRef(s) }),
+        created_by: links.get(`/users/${s.createdBy}`),
+    }),
 });
 
 const feedQuerySchema = { type: 'object', additionalProperties: false, properties: feedQuerySchemaProperties };
@@ -33,8 +35,13 @@ export const router = (domain: AnnotationSchemasDomain, links: Links): Router =>
     const r = Router();
 
     r.get('/annotation-schemas', requireValidQuery(feedQuerySchema), async (req, res) => {
-        const page = await domain.listSchemas(principalOf(res), parseFeedRequest<AnnotationSchemaId>(req));
-        res.json(renderFeedPage(req, links, '/annotation-schemas', page, (s) => renderAnnotationSchema(links, s)));
+        const actor = principalOf(res);
+        const page = await domain.listSchemas(actor, parseFeedRequest<AnnotationSchemaId>(req));
+        res.json(
+            renderFeedPage(req, links, '/annotation-schemas', page, (s) => renderAnnotationSchema(links, actor, s), {
+                create: annotationSchemaPolicy.create(actor) && links.post('/annotation-schemas', createSchema),
+            })
+        );
     });
 
     r.post('/annotation-schemas', express.json(), requireValidBody(createSchema), async (req, res) => {
@@ -45,20 +52,22 @@ export const router = (domain: AnnotationSchemasDomain, links: Links): Router =>
             json_schema?: object | null;
             description?: string;
         };
-        const schema = await domain.createSchema(principalOf(res), {
+        const actor = principalOf(res);
+        const schema = await domain.createSchema(actor, {
             name: body.name,
             kind: body.kind,
             vectorDim: body.vector_dim ?? null,
             jsonSchema: body.json_schema ?? null,
             description: body.description ?? '',
         });
-        const rendered = renderAnnotationSchema(links, schema);
-        res.status(201).location(rendered.links.self!).json(rendered);
+        const rendered = renderAnnotationSchema(links, actor, schema);
+        res.status(201).location(rendered.links.self!.href).json(rendered);
     });
 
     r.get('/annotation-schemas/:ref', async (req, res) => {
-        const schema = await domain.getSchema(principalOf(res), req.params.ref);
-        res.json(renderAnnotationSchema(links, schema));
+        const actor = principalOf(res);
+        const schema = await domain.getSchema(actor, req.params.ref);
+        res.json(renderAnnotationSchema(links, actor, schema));
     });
 
     return r;

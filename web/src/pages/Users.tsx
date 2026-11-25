@@ -7,7 +7,7 @@ import {
 } from '@cochlea/shared';
 import { useState } from 'react';
 import { useParams } from 'react-router';
-import { api, useResource } from '../api';
+import { api, follow, useResource } from '../api';
 import { ApiLink, ErrorMessage } from '../components';
 
 export const UserPage = () => {
@@ -22,8 +22,8 @@ export const UserPage = () => {
             {u.about_me && <p>{u.about_me}</p>}
             {u.info_url && <p><a href={u.info_url}>{u.info_url}</a></p>}
             <p className="row">
-                <ApiLink href={u.links.sounds!}>Sounds</ApiLink>
-                <ApiLink href={u.links.annotations!}>Annotations</ApiLink>
+                <ApiLink href={u.links.sounds!.href}>Sounds</ApiLink>
+                <ApiLink href={u.links.annotations!.href}>Annotations</ApiLink>
             </p>
         </>
     );
@@ -62,7 +62,7 @@ export const MePage = () => {
         <>
             <h1>Your profile</h1>
             <p className="muted">
-                user {u.id} · {u.email} · <ApiLink href={u.links.self!}>public profile</ApiLink>
+                user {u.id} · {u.email} · <ApiLink href={u.links.self!.href}>public profile</ApiLink>
             </p>
             <p>Roles: {u.roles?.map((r) => <span key={r} className="tag">{r}</span>)}</p>
             <form onSubmit={submit} className="stack narrow">
@@ -113,7 +113,7 @@ export const ApiKeysPage = () => {
 
     const revoke = async (key: ApiKeyResource) => {
         if (!confirm(`Revoke "${key.name}"?`)) return;
-        await api(key.links.self!, { method: 'DELETE' });
+        await follow(key.links.delete!);
         keys.reload();
     };
 

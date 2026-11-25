@@ -1,6 +1,6 @@
-import type { AnnotationResource, UserResource } from '@cochlea/shared';
+import type { AnnotationResource } from '@cochlea/shared';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { api, useFeed, useResource } from '../api';
+import { follow, useFeed, useResource } from '../api';
 import {
     AccessBadge,
     AnnotationTable,
@@ -72,16 +72,15 @@ export const AnnotationPage = () => {
     const { annotationId } = useParams();
     const navigate = useNavigate();
     const annotation = useResource<AnnotationResource>(`/annotations/${annotationId}`);
-    const me = useResource<UserResource>('/users/me');
-    const sounds = useSounds(annotation.data ? [annotation.data.links.sound!] : []);
+    const sounds = useSounds(annotation.data ? [annotation.data.links.sound!.href] : []);
     if (annotation.error) return <ErrorMessage error={annotation.error} />;
     if (!annotation.data) return <p>Loading…</p>;
     const a = annotation.data;
-    const sound = sounds.get(a.links.sound!);
+    const sound = sounds.get(a.links.sound!.href);
 
     const remove = async () => {
         if (!confirm('Delete this annotation?')) return;
-        await api(a.links.self!, { method: 'DELETE' });
+        await follow(a.links.delete!);
         navigate(-1);
     };
 
@@ -89,19 +88,19 @@ export const AnnotationPage = () => {
         <>
             <h1>Annotation {a.id}</h1>
             <p className="lead">
-                On <SoundLink href={a.links.sound!} id={a.sound_id} sound={sound} />
+                On <SoundLink href={a.links.sound!.href} id={a.sound_id} sound={sound} />
                 {a.start_seconds !== null && ` · ${formatSeconds(a.start_seconds)} – ${formatSeconds(a.end_seconds)}`}
             </p>
             <dl className="props">
-                <dt>sound</dt><dd><SoundLink href={a.links.sound!} id={a.sound_id} sound={sound} /> (id {a.sound_id})</dd>
-                <dt>schema</dt><dd><ApiLink href={a.links.schema!}>{a.schema}</ApiLink> ({a.kind})</dd>
+                <dt>sound</dt><dd><SoundLink href={a.links.sound!.href} id={a.sound_id} sound={sound} /> (id {a.sound_id})</dd>
+                <dt>schema</dt><dd><ApiLink href={a.links.schema!.href}>{a.schema}</ApiLink> ({a.kind})</dd>
                 <dt>segment</dt><dd>{a.start_seconds === null ? 'whole sound' : `${formatSeconds(a.start_seconds)} – ${formatSeconds(a.end_seconds)}`}</dd>
                 <dt>value</dt><dd><AnnotationValue a={a} /></dd>
                 <dt>data</dt><dd>{a.data === null || a.data === undefined ? <span className="muted">none</span> : <JsonView value={a.data} lines={16} />}</dd>
-                <dt>created</dt><dd>{new Date(a.created_at).toLocaleString()} by <ApiLink href={a.links.created_by!}>user {a.created_by}</ApiLink></dd>
+                <dt>created</dt><dd>{new Date(a.created_at).toLocaleString()} by <ApiLink href={a.links.created_by!.href}>user {a.created_by}</ApiLink></dd>
                 {a.access !== undefined && <><dt>access</dt><dd><AccessBadge access={a.access} /></dd></>}
             </dl>
-            {me.data?.id === a.created_by && <button className="danger" onClick={remove}>Delete</button>}
+            {a.links.delete && <button className="danger" onClick={remove}>Delete</button>}
         </>
     );
 };

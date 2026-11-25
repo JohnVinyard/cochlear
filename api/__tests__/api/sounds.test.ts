@@ -9,16 +9,16 @@ describe('sounds', () => {
         const body = soundBody({ info_url: 'https://example.com/info' });
         const created = await user.client.post('/sounds', body);
         expect(created.status).toBe(201);
-        expect(created.headers.get('location')).toBe(created.body.links.self);
+        expect(created.headers.get('location')).toBe(created.body.links.self.href);
         expect(created.body).toMatchObject({ ...body, created_by: user.id, formats: [] });
 
         const fetched = await user.client.get(created.body.links.self);
         expect(fetched.status).toBe(200);
         expect(fetched.body).toEqual(created.body);
         expect(fetched.body.links).toMatchObject({
-            annotations: expect.stringMatching(/\/v1\/sounds\/\d+\/annotations$/),
-            created_by: expect.stringMatching(/\/v1\/users\/\d+$/),
-            audio: body.audio_url,
+            annotations: { method: 'GET', href: expect.stringMatching(/\/v1\/sounds\/\d+\/annotations$/) },
+            created_by: { method: 'GET', href: expect.stringMatching(/\/v1\/users\/\d+$/) },
+            audio: { method: 'GET', href: body.audio_url },
         });
     });
 
@@ -28,7 +28,7 @@ describe('sounds', () => {
         const original = await createSound(user);
         const dupe = await other.client.post('/sounds', soundBody({ audio_url: original.audio_url }));
         expect(dupe.status).toBe(409);
-        expect(dupe.headers.get('location')).toBe(original.links.self);
+        expect(dupe.headers.get('location')).toBe(original.links.self.href);
     });
 
     it('validates input', async () => {
@@ -113,7 +113,7 @@ describe('sounds', () => {
                 metadata: mp3().metadata,
                 created_by: user.id,
             });
-            expect(format.links.self).toMatch(new RegExp(`/sounds/${created.body.id}/formats/${format.id}$`));
+            expect(format.links.self.href).toMatch(new RegExp(`/sounds/${created.body.id}/formats/${format.id}$`));
             expect((await user.client.get(created.body.links.formats)).body.items).toEqual([format]);
             expect((await user.client.get(format.links.self)).body).toEqual(format);
             // and in the feed
@@ -131,12 +131,12 @@ describe('sounds', () => {
             };
             const added = await bot.client.post(sound.links.formats, sprs);
             expect(added.status).toBe(201);
-            expect(added.headers.get('location')).toBe(added.body.links.self);
+            expect(added.headers.get('location')).toBe(added.body.links.self.href);
             expect(added.body).toMatchObject({ ...sprs, created_by: bot.id });
 
             const dupe = await owner.client.post(sound.links.formats, { ...sprs, metadata: {} });
             expect(dupe.status).toBe(409);
-            expect(dupe.headers.get('location')).toBe(added.body.links.self);
+            expect(dupe.headers.get('location')).toBe(added.body.links.self.href);
 
             expect((await owner.client.delete(added.body.links.self)).status).toBe(403);
             expect((await bot.client.delete(added.body.links.self)).status).toBe(204);

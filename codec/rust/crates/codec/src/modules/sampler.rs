@@ -18,6 +18,7 @@ use serde::Deserialize;
 use crate::dsp::{self, Interpolation};
 use crate::error::Result;
 use crate::node::{display_uri, BufferVoice, BuildContext, Module, Node, NodeRef, ParseContext, Voice};
+use crate::resources::Span;
 
 pub struct Sampler;
 
@@ -140,26 +141,44 @@ impl Node for SamplerNode {
         r
     }
 
+    /// Only the slice it plays (an impulse response is needed whole)
+    fn resource_spans(&self) -> Vec<(String, Span)> {
+        let p = &self.params;
+        let mut r = vec![(p.url.clone(), Span::new(p.start_seconds, p.duration_seconds.map(|d| p.start_seconds + d)))];
+        if let Some(c) = &p.convolve {
+            r.push((c.url.clone(), Span::WHOLE));
+        }
+        r
+    }
+
     fn build(&self, cx: &BuildContext) -> Result<Box<dyn Voice>> {
         let err = |m: String| crate::Error::new(self.path.clone(), m);
         let p = &self.params;
         let rate = cx.sample_rate();
-        let audio = cx.audio(&p.url).map_err(err)?;
+        let source = cx.resource(&p.url).map_err(err)?;
+        let frames = source.frames();
 
-        let start = ((p.start_seconds * rate).round() as usize).min(audio.samples.len());
-        if p.start_seconds > 0.0 && start >= audio.samples.len() {
+        let start = ((p.start_seconds * rate).round() as usize).min(frames);
+        if p.start_seconds > 0.0 && start >= frames {
             return Err(err(format!(
                 "start_seconds {} is past the end of {} ({:.3}s)",
                 p.start_seconds,
                 display_uri(&p.url),
-                audio.duration_seconds()
+                frames as f64 / rate
             )));
         }
         let end = match p.duration_seconds {
-            Some(d) => (start + (d * rate).round() as usize).min(audio.samples.len()),
-            None => audio.samples.len(),
+            Some(d) => (start + (d * rate).round() as usize).min(frames),
+            None => frames,
         };
-        let mut samples = audio.samples[start..end].to_vec();
+        let mut samples = source.read(start, end).ok_or_else(|| {
+            err(format!(
+                "{} from {:.3}s to {:.3}s hasn't been loaded",
+                display_uri(&p.url),
+                start as f64 / rate,
+                end as f64 / rate
+            ))
+        })?;
 
         if let Some(env) = &p.envelope {
             let points: Vec<_> = env.points.iter().map(|pt| (pt.time_seconds, pt.gain)).collect();

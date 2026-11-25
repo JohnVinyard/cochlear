@@ -7,7 +7,8 @@
  *   document    the document's JSON
  *   path        JSON Pointer of the node to play (empty: everything)
  *   seek        seconds to skip to before playing (whole-document playback)
- *   resources   [{ uri, pcm, sampleRate }]: decoded on the main thread
+ *   resources   [{ uri, pieces: [{ offsetSeconds, pcm, sampleRate, totalSeconds }] }]:
+ *               the parts of each resource the document needs, decoded on the main thread
  *
  * Messages posted:  { type: 'error', bytes }  and  { type: 'ended' }
  */
@@ -26,7 +27,10 @@ interface Options {
         document: Uint8Array;
         path: Uint8Array;
         seek: number;
-        resources: { uri: Uint8Array; pcm: Float32Array; sampleRate: number }[];
+        resources: {
+            uri: Uint8Array;
+            pieces: { offsetSeconds: number; pcm: Float32Array; sampleRate: number; totalSeconds: number | null }[];
+        }[];
     };
 }
 
@@ -44,7 +48,9 @@ class CodecProcessor extends AudioWorkletProcessor {
                 if (!r.ok) throw r.bytes;
             };
             check(decoder.load(o.document));
-            for (const r of o.resources) check(decoder.provide(r.uri, r.pcm, r.sampleRate));
+            for (const r of o.resources) {
+                for (const p of r.pieces) check(decoder.provideSpan(r.uri, p.pcm, p.sampleRate, p.offsetSeconds, p.totalSeconds));
+            }
             check(decoder.build(o.path));
             if (o.seek > 0) decoder.seek(o.seek);
             this.decoder = decoder;

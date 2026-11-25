@@ -34,7 +34,11 @@ The design background is in `Audio Annotations API and App.md`.
 - [ ] Tombstone feed, so bots can retract derived annotations when a source annotation or sound is deleted. Today deletes are soft and simply disappear from feeds.
 - [ ] Idempotency for annotation batches (e.g. an `Idempotency-Key` header). Sounds are already idempotent via unique `audio_url`, but a retried annotation POST creates duplicates.
 - [ ] A deleted sound's `audio_url` stays reserved: re-registering it returns `409` with a `Location` that then returns `410`. Decide whether re-registration should be allowed.
-- [ ] `GET /api-keys/{id}`. The `self` link exists but only `DELETE` is routed.
+- [ ] Links, next steps (`docs/links.md`):
+  - [ ] Contextual schemas: `create_annotations` could narrow the body schema for its sound (`start_seconds` at most the duration). That means a schema per sound (by query string, or inline), not one static URL
+  - [ ] A `create_version` link on an annotation schema, for its owner (today ownership of a name is only checked on insert)
+  - [ ] Python client: a `follow(link, body)` helper, and bots that check links rather than catching 403s
+  - [ ] A generic, schema-driven form (e.g. JSON Schema forms) for actions without a bespoke UI
 - [ ] Blob annotations accept any http(s) URL. Decide whether they must point at our bucket.
 - [ ] Account deletion / user soft-delete flow (the column exists; there's no endpoint)
 - [ ] Rate limiting and request-size policy, beyond the body-size limits in express
@@ -44,7 +48,9 @@ The design background is in `Audio Annotations API and App.md`.
 
 ## Web app
 
-- [ ] The score (`/score`): try recording in a browser (the store, strip and page are untested there); then the next steps: upload a score as a user-created sound (an `audio/vnd.cochlea.sprs+json` format, rendered to audio for annotation), trim/select a span of it before export, open it in the codec lab, and quantise or otherwise edit it
+- [ ] The score (`/score`): try recording in a browser (the store, strip and page are untested there), including the timeline's drag-to-select; then the next steps: upload a score as a user-created sound (an `audio/vnd.cochlea.sprs+json` format, rendered to audio for annotation), open it in the codec lab, and quantise or otherwise edit it
+- [ ] `<codec-viewer>` timeline: zoom and scroll. A 30-minute score with a few short plays is hard to select precisely at full width. Also keyboard selection (it's pointer-only)
+- [ ] Exported selections lose trailing silence: a sequencer ends when its last child does. The codec could give sequencers an optional `duration_seconds`
 - [ ] The score records when the user clicked (what they meant), not when the audio started, which lags by a fetch (range request or decode). Worth measuring that lag, and keeping both
 
 - [ ] Audio outlives the page that started it. `<audio-view>`'s `disconnectedCallback` stops its playhead and resize observer but not the sound, so leaving a sound's page mid-playback leaves audio playing with nothing on screen to stop it; the 3-d plot's `SegmentPlayer` is module-level, and also plays on with no control. Fixes: upstream, `<audio-view>` stops on disconnect (or offers a "show the playhead, don't play" mode); here, one app-wide player (a persistent "now playing" bar in `Layout`, or above `<Routes>` to cover the codec lab too) that all playback goes through, with stop, and perhaps a queue
@@ -128,6 +134,14 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [ ] Lint config (eslint)
 
 ## Done
+
+- [x] "Render .wav" on the score page: renders the score (or the selection) offline with the codec (`OpenDocument.render()`, a second at a time, with progress and cancel) to a mono 44.1 kHz 16-bit WAV, turned down if overlapping plays would clip
+
+- [x] The codec loads only the parts of resources it needs: nodes report spans (`Node::resource_spans`; the sampler's slice), the decoder asks for the missing ones (`resource_requests`, `cc_resource_requests`) and takes partial audio (`provide_span`). The web host (`web/src/codec/resources.ts`) fetches WAV spans with range requests (merging spans within 2 s, caching pieces), falling back to whole files otherwise. Two short spans of a 79 MB MusicNet file: 0.75 s
+
+- [x] The score page shows the score in `<codec-viewer>` (timeline, playback) above the table. The viewer has a time selection (drag; `selection`, `codec-selection-changed`, `playSelection()`, and `update()` to keep the view as a document grows); downloads export just the selection, with plays trimmed to it
+
+- [x] Links are `{href, method, schema?}` objects and depend on who's asking: actions are linked only if the requester may do them, per each feature's domain policy (`soundPolicy`, ...). Request body schemas are served at `GET /v1/schemas/{name}`. Contextual action links on the root, sounds, formats, annotations, schemas, users, API keys and feeds; `GET /api-keys/{id}`; the web app's delete buttons and tag form follow links. Tested in `api/__tests__/api/links.test.ts` (`docs/links.md`)
 
 - [x] Codec draft 0.1: `codec/SPEC.md`, JSON schemas, examples; Rust decoder (sampler with slice/envelope/band-pass/convolution, sequencer with compounding speed, `data:`/WAV decoding), `gammatone` extension, C-ABI WebAssembly build, CLI; browser AudioWorklet host; `<codec-viewer>` (max depth, timeline, play any node in context) at the hidden `/labs/codec`; `codec` compose service
 - [x] Codec draft 0.2: `defs` and `$ref` (sounds, envelopes, patterns; instance paths plus `source` pointers; errors located in the definition), reverse-DNS extension types, `requires`; `drums.json` rewritten around patterns (172 KB → 9 KB); the viewer shows references and highlights every use of a definition

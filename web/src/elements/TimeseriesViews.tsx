@@ -66,7 +66,7 @@ export const SoundTimeseries = ({
     audioViewId: string;
     onSelected: (seconds: number, timeStamp?: number) => void;
 }) => {
-    const blobs = useFeed<AnnotationResource>(`${sound.links.annotations}?kind=blob&page_size=500`);
+    const blobs = useFeed<AnnotationResource>(`${sound.links.annotations!.href}?kind=blob&page_size=500`);
     const series = blobs.items.flatMap((a) => {
         const t = timeseriesOf(a);
         return t ? [{ annotation: a, timeseries: t }] : [];

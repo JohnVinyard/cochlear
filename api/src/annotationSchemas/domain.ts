@@ -1,5 +1,5 @@
 import type { AnnotationKind, SchemaRef } from '@cochlea/shared';
-import { type Principal, requireRole } from '../auth/domain';
+import { hasRole, type Principal, requireRole } from '../auth/domain';
 import { InvalidRequest, NotFound, PermissionDenied } from '../shared/errors';
 import type { AnnotationSchemaId, UserId } from '../shared/ids';
 import type { FeedPage, FeedRequest } from '../shared/paging';
@@ -103,6 +103,17 @@ export interface AnnotationSchemasDomain {
      */
     ensureVectorIndexes(): Promise<string[]>;
 }
+
+// ---------------------------------------------------------------------------
+// Policy: who may do what. The use cases enforce it; the HTTP adapter offers
+// a link for an action only when it allows it.
+// ---------------------------------------------------------------------------
+
+export const annotationSchemaPolicy = {
+    read: (actor: Principal) => hasRole(actor, 'ANNOTATION_SCHEMA_READER'),
+    /** A new schema, or the next version of one you own (which only the database can tell) */
+    create: (actor: Principal) => hasRole(actor, 'ANNOTATION_SCHEMA_CREATOR'),
+};
 
 // ---------------------------------------------------------------------------
 // Implementation

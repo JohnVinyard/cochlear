@@ -99,7 +99,7 @@ export const VectorLanes = ({
     selected: AnnotationResource | null;
     onSelected: (a: AnnotationResource, timeStamp?: number) => void;
 }) => {
-    const { items, error } = useAll<AnnotationResource>(`${sound.links.annotations}?kind=vector&page_size=500`);
+    const { items, error } = useAll<AnnotationResource>(`${sound.links.annotations!.href}?kind=vector&page_size=500`);
     const lanes = useMemo(() => {
         const bySchema = new Map<string, AnnotationResource[]>();
         for (const a of items) {
@@ -332,7 +332,7 @@ export const SimilarSegments = ({ query }: { query: AnnotationResource }) => {
                                 duration_seconds: selected.annotation.duration_seconds!,
                             }}
                         />{' '}
-                        ▶ <ApiLink href={selected.sound.links.self!}>{selected.sound.title ?? `sound ${selected.sound.id}`}</ApiLink>
+                        ▶ <ApiLink href={selected.sound.links.self!.href}>{selected.sound.title ?? `sound ${selected.sound.id}`}</ApiLink>
                         {` · ${selected.annotation.start_seconds!.toFixed(2)}s – ${(
                             selected.annotation.start_seconds! + selected.annotation.duration_seconds!
                         ).toFixed(2)}s · distance ${selected.distance.toFixed(3)} · `}

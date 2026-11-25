@@ -23,7 +23,7 @@ describe('full-text search (q)', () => {
         });
         const [tagged, prose, json, unrelated] = ids(res.body.items);
         const search = (q: string) =>
-            user.client.walk(`${sound.links.annotations}?q=${encodeURIComponent(q)}`).then(ids);
+            user.client.walk(`${sound.links.annotations.href}?q=${encodeURIComponent(q)}`).then(ids);
 
         expect(await search(w)).toEqual([tagged, prose, json]); // a hyphenated tag is indexed in parts...
         expect(await search(`${w}-tag`)).toEqual([tagged]); // ...and whole

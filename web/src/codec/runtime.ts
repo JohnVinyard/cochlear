@@ -2,11 +2,13 @@
  * Main-thread side of the codec in the browser.
  *
  * `CodecRuntime.open(document)` validates the document with the WebAssembly
- * decoder, fetches and decodes every resource it needs (`fetch` +
- * `decodeAudioData`, so `data:` URIs and any format the browser supports
- * work), and describes where every node plays. `play()` starts an
- * AudioWorkletNode that decodes on the audio thread.
+ * decoder, loads the parts of every resource it needs (see resources.ts:
+ * range requests for WAV files, else `fetch` + `decodeAudioData`, so `data:`
+ * URIs and any format the browser supports work), and describes where every
+ * node plays. `play()` starts an AudioWorkletNode that decodes on the audio
+ * thread.
  */
+import { type Piece, ResourceLoader, type ResourceRequest } from './resources';
 import workletUrl from './worklet.ts?worker&url';
 import { type RawResult, WasmDecoder } from './wasm';
 
@@ -48,9 +50,10 @@ export class CodecFailure extends Error {
     }
 }
 
-interface DecodedAudio {
-    pcm: Float32Array;
-    sampleRate: number;
+/** What's been loaded of one resource */
+export interface LoadedResource {
+    uri: string;
+    pieces: Piece[];
 }
 
 const encoder = new TextEncoder();
@@ -60,16 +63,6 @@ const parse = <T>(r: RawResult): T => {
     const value = JSON.parse(decoder.decode(r.bytes));
     if (!r.ok) throw new CodecFailure(value as CodecError);
     return value as T;
-};
-
-const mono = (buffer: AudioBuffer): Float32Array => {
-    if (buffer.numberOfChannels === 1) return buffer.getChannelData(0).slice();
-    const out = new Float32Array(buffer.length);
-    for (let c = 0; c < buffer.numberOfChannels; c++) {
-        const data = buffer.getChannelData(c);
-        for (let i = 0; i < out.length; i++) out[i]! += data[i]! / buffer.numberOfChannels;
-    }
-    return out;
 };
 
 export interface Playback {
@@ -92,8 +85,8 @@ export class CodecRuntime {
 
     private wasm: Promise<{ bytes: ArrayBuffer; module: WebAssembly.Module }> | null = null;
     private worklet: Promise<void> | null = null;
-    private audio = new Map<string, Promise<DecodedAudio>>();
     private _context: AudioContext | null = null;
+    readonly loader = new ResourceLoader((bytes) => this.context.decodeAudioData(bytes));
 
     constructor(private readonly wasmUrl: string) {}
 
@@ -117,21 +110,6 @@ export class CodecRuntime {
         }));
     }
 
-    private decodeAudio(uri: string, baseUrl: string): Promise<DecodedAudio> {
-        let p = this.audio.get(uri);
-        if (!p) {
-            p = (async () => {
-                const resp = await fetch(new URL(uri, baseUrl));
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const buffer = await this.context.decodeAudioData(await resp.arrayBuffer());
-                return { pcm: mono(buffer), sampleRate: buffer.sampleRate };
-            })();
-            p.catch(() => this.audio.delete(uri));
-            this.audio.set(uri, p);
-        }
-        return p;
-    }
-
     /**
      * Validates a document, loads its resources and lays it out. `baseUrl`
      * resolves relative URIs (default: the page).
@@ -145,24 +123,60 @@ export class CodecRuntime {
         const wasm = new WasmDecoder(module, this.context.sampleRate);
         try {
             const { modules } = parse<{ modules: ModuleInfo[] }>(wasm.load(json));
-            const uris = parse<string[]>(wasm.resources());
+            const requests = parse<ResourceRequest[]>(wasm.resourceRequests());
             let loaded = 0;
-            onProgress?.(0, uris.length);
-            const resources = await Promise.all(
-                uris.map(async (uri) => {
+            onProgress?.(0, requests.length);
+            const resources: LoadedResource[] = await Promise.all(
+                requests.map(async (request) => {
                     try {
-                        const audio = await this.decodeAudio(uri, baseUrl);
-                        onProgress?.(++loaded, uris.length);
-                        return { uri, ...audio };
+                        const pieces = await this.loader.load(request, baseUrl);
+                        onProgress?.(++loaded, requests.length);
+                        return { uri: request.uri, pieces };
                     } catch (e) {
+                        const uri = request.uri;
                         const shown = uri.length > 64 ? `${uri.slice(0, 48)}…` : uri;
                         throw new CodecFailure({ path: '', message: `couldn't load ${shown}: ${(e as Error).message}` });
                     }
                 })
             );
-            for (const r of resources) parse(wasm.provide(encoder.encode(r.uri), r.pcm, r.sampleRate));
+            for (const r of resources) {
+                const uri = encoder.encode(r.uri);
+                for (const p of r.pieces) parse(wasm.provideSpan(uri, p.pcm, p.sampleRate, p.offsetSeconds, p.totalSeconds));
+            }
             const description = parse<Description>(wasm.build(new Uint8Array()));
             return new OpenDocument(this, json, modules, description, resources);
+        } finally {
+            wasm.destroy();
+        }
+    }
+
+    /** @internal */
+    async render(doc: OpenDocument, { sampleRate = 44100, onProgress, signal }: RenderOptions = {}): Promise<Float32Array> {
+        const { module } = await this.loadWasm();
+        const wasm = new WasmDecoder(module, sampleRate);
+        try {
+            parse(wasm.load(doc.json));
+            for (const r of doc.resources) {
+                const uri = encoder.encode(r.uri);
+                for (const p of r.pieces) parse(wasm.provideSpan(uri, p.pcm, p.sampleRate, p.offsetSeconds, p.totalSeconds));
+            }
+            const description = parse<Description>(wasm.build(new Uint8Array()));
+            const total = Math.round(description.duration_seconds * sampleRate);
+            const out = new Float32Array(total);
+            // a second at a time, yielding in between, so the page stays responsive
+            const block = new Float32Array(sampleRate);
+            let at = 0;
+            while (at < total) {
+                if (signal?.aborted) throw new DOMException('rendering was cancelled', 'AbortError');
+                const n = Math.min(wasm.render(block), total - at);
+                out.set(block.subarray(0, n), at);
+                at += n;
+                if (n < block.length) break;
+                onProgress?.(at / total);
+                await new Promise((resolve) => setTimeout(resolve, 0));
+            }
+            onProgress?.(1);
+            return at < total ? out.slice(0, at) : out;
         } finally {
             wasm.destroy();
         }
@@ -186,7 +200,7 @@ export class CodecRuntime {
                 document: doc.json,
                 path: encoder.encode(path),
                 seek: path ? 0 : fromSeconds,
-                resources: doc.resources.map((r) => ({ uri: encoder.encode(r.uri), pcm: r.pcm, sampleRate: r.sampleRate })),
+                resources: doc.resources.map((r) => ({ uri: encoder.encode(r.uri), pieces: r.pieces })),
             },
         });
         const startedAt = ctx.currentTime;
@@ -219,6 +233,14 @@ export class CodecRuntime {
     }
 }
 
+export interface RenderOptions {
+    /** Default 44100 */
+    sampleRate?: number;
+    /** 0 to 1 */
+    onProgress?: (fraction: number) => void;
+    signal?: AbortSignal;
+}
+
 export class OpenDocument {
     private readonly byPath: Map<string, NodeLayout>;
 
@@ -227,13 +249,21 @@ export class OpenDocument {
         readonly json: Uint8Array,
         readonly modules: ModuleInfo[],
         readonly description: Description,
-        readonly resources: { uri: string; pcm: Float32Array; sampleRate: number }[]
+        readonly resources: LoadedResource[]
     ) {
         this.byPath = new Map(description.nodes.map((n) => [n.path, n]));
     }
 
     node(path: string): NodeLayout | undefined {
         return this.byPath.get(path);
+    }
+
+    /**
+     * Renders the whole document, faster than real time and without playing
+     * it, as mono samples at `sampleRate` (default 44100)
+     */
+    render(options: RenderOptions = {}): Promise<Float32Array> {
+        return this.runtime.render(this, options);
     }
 
     /** Plays one node (a JSON Pointer) in context, or everything from a time */
