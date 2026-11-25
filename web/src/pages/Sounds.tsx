@@ -1,4 +1,4 @@
-import { LICENSE_TYPES, type AnnotationResource, type Link, type Page, type SoundResource } from '@cochlea/shared';
+import { LICENSE_TYPES, SPRS_MIME_TYPE, type AnnotationResource, type Link, type Page, type SoundResource } from '@cochlea/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api, ApiError, appPath, follow, useFeed, useResource } from '../api';
@@ -7,6 +7,9 @@ import { AnnotationTimeline } from '../elements/AnnotationTimeline';
 import { AudioView, playSpan } from '../elements/AudioView';
 import { SoundTimeseries } from '../elements/TimeseriesViews';
 import { SimilarSegments, VectorLanes } from '../vectors/VectorSearch';
+import { codecDocumentUrl, probeCodecDocument, useRenderedAudio } from '../codec/sounds';
+import type { CodecViewer } from '../elements/codec-viewer';
+import '../elements/codec-viewer';
 import { StarButton } from '../favorites';
 import { announceSource, registerSound } from '../score/store';
 import type { AudioViewElement } from '../elements/web-components';
@@ -63,7 +66,23 @@ const CreateSound = () => {
         e.preventDefault();
         setError(null);
         try {
-            const duration = form.duration_seconds ? Number(form.duration_seconds) : await probeDuration(form.audio_url);
+            // a codec document is laid out to find its duration, and described by a format
+            const codec = await probeCodecDocument(form.audio_url).catch(() => null);
+            const duration = form.duration_seconds
+                ? Number(form.duration_seconds)
+                : (codec?.durationSeconds ?? (await probeDuration(form.audio_url)));
+            const formats = codec
+                ? [
+                      {
+                          url: form.audio_url,
+                          mime_type: SPRS_MIME_TYPE,
+                          metadata: {
+                              ...(typeof codec.document.version === 'string' ? { version: codec.document.version } : {}),
+                              ...(codec.document.requires ? { requires: codec.document.requires } : {}),
+                          },
+                      },
+                  ]
+                : [];
             const sound = await api<SoundResource>('/sounds', {
                 method: 'POST',
                 body: {
@@ -72,6 +91,7 @@ const CreateSound = () => {
                     info_url: form.info_url || null,
                     license_type: form.license_type,
                     duration_seconds: duration,
+                    formats,
                 },
             });
             navigate(appPath(sound.links.self!.href));
@@ -102,39 +122,59 @@ const CreateSound = () => {
     );
 };
 
+type View = 'codec' | 'time-series' | 'spectrogram';
+
 export const SoundPage = () => {
     const { soundId } = useParams();
     const sound = useResource<SoundResource>(`/sounds/${soundId}`);
     const annotations = useFeed<AnnotationResource>(`/sounds/${soundId}/annotations?page_size=500`);
     const audioView = useRef<AudioViewElement | null>(null);
-    const [view, setView] = useState<'time-series' | 'spectrogram'>('time-series');
+    const codecViewer = useRef<CodecViewer | null>(null);
+    const [chosenView, setView] = useState<View | null>(null);
     const [query, setQuery] = useState<AnnotationResource | null>(null);
+
+    // a sound whose audio is a codec document is shown as one, and rendered for a waveform or spectrogram
+    const codecUrl = sound.data ? codecDocumentUrl(sound.data) : null;
+    const view: View = chosenView ?? (codecUrl ? 'codec' : 'time-series');
+    const rendered = useRenderedAudio(codecUrl, view !== 'codec');
+    const audioSrc = codecUrl ? rendered.url : (sound.data?.audio_url ?? null);
 
     // so the score can name what's played here
     useEffect(() => {
         if (sound.data) registerSound(sound.data);
     }, [sound.data]);
 
+    /** Plays a span: in the codec viewer, or the audio view */
+    const playRange = useCallback(
+        (start: number, duration: number, source: 'annotation' | 'feature', timeStamp?: number) => {
+            if (view === 'codec') {
+                void codecViewer.current?.play(undefined, start, start + duration);
+            } else if (audioView.current && audioSrc) {
+                announceSource(source);
+                playSpan(audioView.current, audioSrc, start, duration, timeStamp);
+            }
+        },
+        [view, audioSrc]
+    );
+
     const play = useCallback(
         (a: AnnotationResource, timeStamp?: number) => {
             // just the annotation's span, not on to the end of the sound
-            if (sound.data && audioView.current && a.start_seconds !== null && a.duration_seconds !== null) {
-                announceSource('annotation');
-                playSpan(audioView.current, sound.data.audio_url, a.start_seconds, a.duration_seconds, timeStamp);
+            if (a.start_seconds !== null && a.duration_seconds !== null) {
+                playRange(a.start_seconds, a.duration_seconds, 'annotation', timeStamp);
             }
         },
-        [sound.data]
+        [playRange]
     );
 
     const playFrom = useCallback(
         (seconds: number, timeStamp?: number) => {
-            if (sound.data && audioView.current) {
+            if (sound.data) {
                 const start = Math.max(0, seconds);
-                announceSource('feature');
-                playSpan(audioView.current, sound.data.audio_url, start, sound.data.duration_seconds - start, timeStamp);
+                playRange(start, sound.data.duration_seconds - start, 'feature', timeStamp);
             }
         },
-        [sound.data]
+        [sound.data, playRange]
     );
 
     const search = useCallback(
@@ -167,10 +207,24 @@ export const SoundPage = () => {
             </p>
             <SoundFormats sound={s} />
             <div className="row">
-                <button className={view === 'time-series' ? '' : 'secondary'} onClick={() => setView('time-series')}>Waveform</button>
-                <button className={view === 'spectrogram' ? '' : 'secondary'} onClick={() => setView('spectrogram')}>Spectrogram</button>
+                {codecUrl && (
+                    <button className={view === 'codec' ? '' : 'secondary'} onClick={() => setView('codec')}
+                        title="The sound is a cochlea codec document">Codec</button>
+                )}
+                <button className={view === 'time-series' ? '' : 'secondary'} onClick={() => setView('time-series')}
+                    title={codecUrl ? 'Renders the document to audio, in the browser' : undefined}>Waveform</button>
+                <button className={view === 'spectrogram' ? '' : 'secondary'} onClick={() => setView('spectrogram')}
+                    title={codecUrl ? 'Renders the document to audio, in the browser' : undefined}>Spectrogram</button>
             </div>
-            <AudioView id={`audio-view-${s.id}`} ref={audioView} src={s.audio_url} view={view} />
+            {view === 'codec' && codecUrl ? (
+                <codec-viewer ref={codecViewer} src={codecUrl} max-depth="1" />
+            ) : audioSrc ? (
+                <AudioView id={`audio-view-${s.id}`} ref={audioView} src={audioSrc} view={view === 'codec' ? 'time-series' : view} />
+            ) : rendered.error ? (
+                <ErrorMessage error={rendered.error} />
+            ) : (
+                <p className="muted">Rendering the document to audio…</p>
+            )}
             <SoundTimeseries sound={s} audioViewId={`audio-view-${s.id}`} onSelected={playFrom} />
             <VectorLanes sound={s} audioViewId={`audio-view-${s.id}`} selected={query} onSelected={search} />
             <AnnotationTimeline

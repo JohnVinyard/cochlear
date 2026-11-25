@@ -160,6 +160,8 @@ export const recordPlay = (play: Omit<PlayEvent, 'id' | 'at' | 'soundId' | 'titl
     title?: string | null;
 }) => {
     if (!state.recording || !state.uid) return;
+    // audio made in the page (e.g. a codec document rendered for a waveform) can't be played back from a score
+    if (play.audioUrl.startsWith('blob:')) return;
     const known = sounds.get(play.audioUrl);
     const { timeStamp, ...rest } = play;
     const event: PlayEvent = {

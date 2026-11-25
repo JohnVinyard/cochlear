@@ -13,6 +13,8 @@ dependencies = ["requests>=2.31"]
 # conjure pulls in torch, lmdb, boto3, ... so caching is opt-in
 cache = ["conjure @ git+https://github.com/JohnVinyard/conjure"]
 dev = ["pytest>=8"]
+# cochlea_client.codec: renders codec (.sprs) documents
+codec = ["numpy", "soundfile", "wasmtime>=51"]
 
 [tool.setuptools]
 packages = ["cochlea_client"]

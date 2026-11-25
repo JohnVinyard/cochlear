@@ -24,9 +24,17 @@ to a local file:
 (`{}` is the rest of the URL). Several mirrors may share a prefix; the first
 one whose file exists wins.
 
+A sound whose audio is a cochlea codec document (`.sprs`: a format at its
+audio_url with the codec's media type, or simply a file that turns out to be
+one) is rendered with the codec (cochlea_client.codec, the web app's
+decoder), at the analysis sample rate, and then annotated like any other.
+Only the parts of its resources it plays are loaded, from mirrors where
+they're mapped. The decoder is web/public/codec/cochlea_codec.wasm
+(`yarn build-codec`), or COCHLEA_CODEC_WASM.
+
 Failures:
-  - a sound that can't be fetched (4xx), decoded, or is too long is recorded
-    in recent_failures and skipped: retrying won't help;
+  - a sound that can't be fetched (4xx), decoded (or rendered), or is too
+    long is recorded in recent_failures and skipped: retrying won't help;
   - network errors, 5xx and 429s are retried with backoff, indefinitely,
     without moving on, since the next sound would likely fail the same way;
   - an invalid API key (401) stops the bot.
@@ -50,8 +58,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import botkit  # noqa: E402
 import features  # noqa: E402
+import numpy as np  # noqa: E402
 from botkit import Fatal, FeedBot, Item, Permanent  # noqa: E402,F401
-from cochlea_client import CochleaClient  # noqa: E402
+from cochlea_client import CochleaClient, codec  # noqa: E402
 
 # Bump when the output changes: a new value starts the feed over, and each
 # sound's annotations are replaced (sync_annotations(prune=True)). A change
@@ -88,10 +97,9 @@ class Mirror:
 
 def fetch(url: str, dest: Path, mirrors: list[Mirror], max_bytes: int, timeout: float = 60) -> Path:
     """A local path for the audio at `url`: a mirrored file, or a download into `dest`"""
-    for m in mirrors:
-        path = m.path_for(url)
-        if path is not None and path.is_file():
-            return path
+    local = mirrored(url, mirrors)
+    if local is not None:
+        return local
     try:
         with requests.get(url, stream=True, timeout=timeout) as resp:
             if resp.status_code == 429 or resp.status_code >= 500:
@@ -113,6 +121,47 @@ def fetch(url: str, dest: Path, mirrors: list[Mirror], max_bytes: int, timeout: 
         raise Permanent(f"invalid URL {url}: {e}") from e
     except requests.exceptions.RequestException as e:
         raise ConnectionError(f"fetching {url}: {e}") from e
+
+
+def mirrored(url: str, mirrors: list[Mirror]) -> Optional[Path]:
+    """The first mirror's local file for `url` that exists"""
+    for m in mirrors:
+        path = m.path_for(url)
+        if path is not None and path.is_file():
+            return path
+    return None
+
+
+def codec_document(sound: dict, path: Path, max_bytes: int = 64 << 20) -> Optional[dict]:
+    """The sound's codec document, if its audio is one (by its format, or by sniffing the file)"""
+    declared = codec.is_codec_sound(sound)
+    with open(path, "rb") as f:
+        head = f.read(64).lstrip()
+    if not declared and not head.startswith(b"{"):
+        return None
+    if path.stat().st_size > max_bytes:
+        raise Permanent(f"the codec document is larger than {max_bytes} bytes")
+    document = codec.parse_document(path.read_bytes())
+    if document is None and declared:
+        raise Permanent("its format says it's a codec document (.sprs), but it isn't one")
+    return document
+
+
+def default_render(document: dict, url: str, options: "Options") -> np.ndarray:
+    """Renders a codec document at the analysis sample rate"""
+    loader = codec.AudioLoader(local_path=lambda u: mirrored(u, options.mirrors), max_bytes=options.max_bytes)
+    try:
+        return codec.render(document, sample_rate=features.SAMPLE_RATE, base_url=url, loader=loader)
+    except codec.CodecError as e:
+        raise Permanent(f"couldn't render the codec document: {e}") from e
+    except codec.ResourceError as e:
+        if e.transient:
+            raise ConnectionError(str(e)) from e
+        raise Permanent(f"couldn't load the codec document's audio: {e}") from e
+    except FileNotFoundError as e:  # no decoder
+        raise Permanent(str(e)) from e
+    except ImportError as e:  # no wasmtime
+        raise Permanent(f"can't render codec documents: {e} (pip install wasmtime)") from e
 
 
 def default_extract(path: Path) -> features.Features:
@@ -145,11 +194,15 @@ class FeatureBot(FeedBot):
 
     def __init__(self, client: CochleaClient, options: Options,
                  extract: Callable[[Path], features.Features] = default_extract,
-                 sleep: Callable[[float], None] = time.sleep):
+                 sleep: Callable[[float], None] = time.sleep,
+                 render: Optional[Callable[[dict, str], np.ndarray]] = None,
+                 extract_samples: Callable[[np.ndarray], features.Features] = features.extract):
         super().__init__(client, poll_seconds=options.poll_seconds, backoff_seconds=options.backoff_seconds,
                          max_backoff_seconds=options.max_backoff_seconds, sleep=sleep)
         self.options = options
         self.extract = extract
+        self.render = render or (lambda document, url: default_render(document, url, options))
+        self.extract_samples = extract_samples
 
     @property
     def version(self) -> str:  # type: ignore[override]
@@ -175,7 +228,11 @@ class FeatureBot(FeedBot):
                             f"({self.options.max_duration_seconds:.0f})")
         with tempfile.TemporaryDirectory(prefix="featurebot-") as tmp:
             path = fetch(sound["audio_url"], Path(tmp), self.options.mirrors, self.options.max_bytes)
-            extracted = self.extract(path)
+            document = codec_document(sound, path)
+            if document is not None:
+                extracted = self.extract_samples(self.render(document, sound["audio_url"]))
+            else:
+                extracted = self.extract(path)
         bodies = features.annotations(extracted, duration, upload=self.client.upload_blob)
         # prune: these are all of featurebot's annotations on the sound, so older output goes
         result = self.client.sync_annotations(sound["id"], bodies, access="*", prune=True)

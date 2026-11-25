@@ -1,2 +1,4 @@
 librosa==0.11.0
 requests>=2.31
+# renders codec (.sprs) sounds with the web app's decoder (cochlea_client.codec)
+wasmtime==51.0.0

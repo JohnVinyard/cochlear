@@ -146,3 +146,75 @@ def test_mirrors_map_urls_to_files():
     assert m.path_for("https://elsewhere/1727") is None
     assert m.path_for("https://music-net.s3.us-east-1.amazonaws.com/../../etc/passwd") is None
     assert Mirror.parse("https://a/=/b/").path_for("https://a/x.wav") == Path("/b/x.wav")
+
+
+# -- codec documents ------------------------------------------------------------
+
+SPRS = "audio/vnd.cochlea.sprs+json"
+
+
+def codec_doc(url="https://audio.example/source"):
+    return {"format": "cochlea-codec", "version": "0.2", "root": {"type": "sequencer", "events": [
+        {"time_seconds": 0, "node": {"type": "sampler", "url": url, "start_seconds": 1, "duration_seconds": 2}}]}}
+
+
+def codec_sound(i, name, declared=True):
+    s = sound(i, name, duration=2.0)
+    s["formats"] = [{"url": s["audio_url"], "mime_type": SPRS}] if declared else []
+    return s
+
+
+def test_renders_codec_documents_and_annotates_them(audio_dir):
+    import json
+
+    (audio_dir / "doc.wav").write_text(json.dumps(codec_doc()))
+    (audio_dir / "sniffed.wav").write_text(json.dumps(codec_doc()))
+    rendered, analysed = [], []
+
+    def render(document, url):
+        rendered.append((document["root"]["events"][0]["node"]["url"], url))
+        return np.zeros(100, np.float32)
+
+    def extract_samples(y):
+        analysed.append(len(y))
+        return FEATURES
+
+    api = FakeApi([codec_sound(1, "doc"), codec_sound(2, "sniffed", declared=False), sound(3)])
+    b = bot(api, audio_dir)
+    b.render, b.extract_samples = render, extract_samples
+    b.run(once=True)
+    # both documents were rendered (the second recognised by its content), the WAV wasn't
+    assert rendered == [("https://audio.example/source", "https://audio.example/doc"),
+                        ("https://audio.example/source", "https://audio.example/sniffed")]
+    assert analysed == [100, 100]
+    assert set(api.synced) == {1, 2, 3}
+
+
+def test_a_sound_that_says_its_a_codec_document_but_isnt_is_skipped(audio_dir):
+    api = FakeApi([codec_sound(1, "1")])  # 1.wav is (the start of) a WAV
+    bot(api, audio_dir).run(once=True)
+    assert api.document["failed"] == 1
+    assert "isn't one" in api.document["recent_failures"][0]["error"]
+
+
+def test_renders_a_codec_document_with_the_real_decoder(tmp_path):
+    import json
+
+    import soundfile
+    from cochlea_client.codec import find_wasm
+
+    if not find_wasm().is_file():
+        pytest.skip("the codec decoder isn't built (yarn build-codec)")
+    # the document plays 2 s from the middle of a mirrored 10 s sound: clicks, so there are onsets
+    sr = 22050
+    y = np.zeros(10 * sr, np.float32)
+    y[np.arange(0, len(y), sr // 4)] = 1.0
+    soundfile.write(tmp_path / "source.wav", y, sr)
+    (tmp_path / "doc.wav").write_text(json.dumps(codec_doc()))
+    api = FakeApi([codec_sound(1, "doc")])
+    mirror = Mirror("https://audio.example/", f"{tmp_path}/{{}}.wav")
+    FeatureBot(api, Options(mirrors=[mirror]), sleep=lambda s: None).run(once=True)
+    assert api.document.get("failed", 0) == 0, api.document.get("recent_failures")
+    onsets = [b for b in api.last_bodies if b["schema"].startswith("featurebot-onset")]
+    assert 4 <= len(onsets) <= 10, len(onsets)  # about 8 clicks in 2 s
+    assert all(b["start_seconds"] < 2.0 for b in onsets)

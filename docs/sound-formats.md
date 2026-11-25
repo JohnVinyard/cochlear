@@ -34,6 +34,25 @@ For example, MusicNet's originals would be
 `{"url": "https://music-net.s3.us-east-1.amazonaws.com/1727", "mime_type": "audio/wav",
 "metadata": {"sample_rate": 44100, "channels": 1, "bit_depth": 32, "sample_format": "float"}}`.
 
+## Sounds that are codec documents
+
+A sound's audio may be a cochlea codec document: its `audio_url` is a
+`.sprs` file, and a format at the **same URL** has the media type
+`audio/vnd.cochlea.sprs+json`. There may be no other audio for it. The web
+app shows such a sound in its codec viewer, and renders it when it needs a
+waveform or spectrogram. Bots render it to analyse it (featurebot does, with
+`cochlea_client.codec`). The web app's "Register a sound" form recognises a
+`.sprs` URL, works out its duration with the codec, and adds the format.
+
+```json
+{ "audio_url": "https://example.com/score.sprs", "duration_seconds": 12.5, "license_type": "...",
+  "formats": [{ "url": "https://example.com/score.sprs", "mime_type": "audio/vnd.cochlea.sprs+json",
+                "metadata": { "version": "0.2" } }] }
+```
+
+A codec format at a *different* URL is just another encoding of an ordinary
+sound.
+
 Common media types: `audio/wav`, `audio/flac`, `audio/mpeg` (MP3),
 `audio/ogg` (Vorbis or Opus in Ogg), `audio/opus`, `audio/mp4` (AAC, ALAC),
 `audio/webm`, and `audio/vnd.cochlea.sprs+json` for the codec

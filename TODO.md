@@ -49,6 +49,8 @@ The design background is in `Audio Annotations API and App.md`.
 ## Web app
 
 - [ ] The score (`/score`): try recording in a browser (the store, strip and page are untested there), including the timeline's drag-to-select; then the next steps: upload a score as a user-created sound (an `audio/vnd.cochlea.sprs+json` format, rendered to audio for annotation), open it in the codec lab, and quantise or otherwise edit it
+- [ ] Save a score as a sound: upload the `.sprs` (`POST /blobs`), then register it (the form already handles `.sprs` URLs). Plays of a codec sound's rendered preview aren't recorded in the score (a `blob:` URL), and a score can't contain a codec sound (a sampler can't play a document): nesting documents would need the codec to support it
+- [ ] The 3-d plot's segment loader (`audio/segments.ts`) and the codec's (`codec/resources.ts`) could share one cache
 - [ ] `<codec-viewer>` timeline: zoom and scroll. A 30-minute score with a few short plays is hard to select precisely at full width. Also keyboard selection (it's pointer-only)
 - [ ] Exported selections lose trailing silence: a sequencer ends when its last child does. The codec could give sequencers an optional `duration_seconds`
 - [ ] The score records when the user clicked (what they meant), not when the audio started, which lags by a fetch (range request or decode). Worth measuring that lag, and keeping both
@@ -134,6 +136,8 @@ The open questions in `codec/SPEC.md` come first, especially parameter overrides
 - [ ] Lint config (eslint)
 
 ## Done
+
+- [x] Sounds that are codec documents (`docs/sound-formats.md`): the sound page shows them in `<codec-viewer>` (annotations play through it), and renders them in the browser for the waveform and spectrogram; the "Register a sound" form recognises `.sprs` URLs. featurebot renders them with `cochlea_client.codec` (the web app's wasm decoder, via wasmtime; spans only, from mirrors or with range requests) and annotates them like any other sound
 
 - [x] "Render .wav" on the score page: renders the score (or the selection) offline with the codec (`OpenDocument.render()`, a second at a time, with progress and cancel) to a mono 44.1 kHz 16-bit WAV, turned down if overlapping plays would clip
 
