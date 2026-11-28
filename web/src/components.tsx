@@ -1,4 +1,4 @@
-import type { AnnotationResource, LicenseType, SoundResource } from '@cochlea/shared';
+import { ALL_RIGHTS_RESERVED, type AnnotationResource, type LicenseType, type SoundResource } from '@cochlea/shared';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { api, type ApiError, appPath } from './api';
@@ -68,7 +68,7 @@ export const AnnotationValue = ({ a, compact = false }: { a: AnnotationResource;
     return null;
 };
 
-/** Each license's short name, and the Creative Commons icons that spell it out */
+/** Each license's short name, and the Creative Commons icons that spell it out (none for all rights reserved) */
 const LICENSES: Record<LicenseType, { name: string; icons: string[] }> = {
     'https://creativecommons.org/licenses/by/4.0': { name: 'CC BY 4.0', icons: ['cc', 'by'] },
     'https://creativecommons.org/licenses/by-sa/4.0': { name: 'CC BY-SA 4.0', icons: ['cc', 'by', 'sa'] },
@@ -77,6 +77,7 @@ const LICENSES: Record<LicenseType, { name: string; icons: string[] }> = {
     'https://creativecommons.org/licenses/by-nc-sa/4.0': { name: 'CC BY-NC-SA 4.0', icons: ['cc', 'by', 'nc', 'sa'] },
     'https://creativecommons.org/licenses/by-nc-nd/4.0': { name: 'CC BY-NC-ND 4.0', icons: ['cc', 'by', 'nc', 'nd'] },
     'https://creativecommons.org/publicdomain/zero/1.0': { name: 'CC0 1.0', icons: ['cc', 'zero'] },
+    [ALL_RIGHTS_RESERVED]: { name: 'All rights reserved', icons: [] },
 };
 
 /**
@@ -87,6 +88,15 @@ const LICENSES: Record<LicenseType, { name: string; icons: string[] }> = {
 export const LicenseBadge = ({ license, compact = false }: { license: string; compact?: boolean }) => {
     const known = LICENSES[license as LicenseType];
     if (!known) return <a href={license}>license</a>;
+    if (license === ALL_RIGHTS_RESERVED) {
+        // no deed to link to
+        return (
+            <span className="license" title="All rights reserved: no license is granted to this sound"
+                  aria-label={compact ? known.name : undefined}>
+                ©{!compact && <span>{known.name}</span>}
+            </span>
+        );
+    }
     return (
         <a
             className="license"

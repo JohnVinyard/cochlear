@@ -107,11 +107,20 @@ async function fetchRange(url: string, from: number, to: number, signal?: AbortS
 
 type Source = { kind: 'wav'; format: WavFormat } | { kind: 'whole' };
 
+/** Something playing */
+export interface Playing {
+    stop(): void;
+    /** Resolves when it ends or is stopped */
+    readonly ended: Promise<void>;
+}
+
+const nothing: Playing = { stop: () => undefined, ended: Promise.resolve() };
+
 export class SegmentPlayer {
     private readonly sources = new Map<string, Promise<Source>>();
     private readonly decoded = new Map<string, Promise<AudioBuffer>>();
     private context: AudioContext | null = null;
-    private playing: { node: AudioBufferSourceNode; gain: GainNode } | null = null;
+    private playing: { node: AudioBufferSourceNode; gain: GainNode; finish: () => void } | null = null;
     private request: AbortController | null = null;
 
     /** For tests and the curious: how each URL is being read */
@@ -181,12 +190,16 @@ export class SegmentPlayer {
         return buffer;
     }
 
-    /** Plays a segment, stopping whatever was playing. Resolves when it's started. */
-    async play(url: string, startSeconds: number, durationSeconds: number): Promise<void> {
+    /**
+     * Plays a segment, stopping whatever was playing. Resolves when it's
+     * started (or, if something else was played or it was stopped while
+     * fetching, with something already ended).
+     */
+    async play(url: string, startSeconds: number, durationSeconds: number): Promise<Playing> {
         this.stop();
         const request = (this.request = new AbortController());
         const buffer = await this.segment(url, startSeconds, durationSeconds, request.signal);
-        if (request.signal.aborted) return;
+        if (request.signal.aborted) return nothing;
         const ctx = this.audioContext();
         const node = ctx.createBufferSource();
         node.buffer = buffer;
@@ -198,10 +211,19 @@ export class SegmentPlayer {
         gain.gain.setValueAtTime(1, ctx.currentTime + buffer.duration - fade);
         gain.gain.linearRampToValueAtTime(0, ctx.currentTime + buffer.duration);
         node.connect(gain).connect(ctx.destination);
+        let finish!: () => void;
+        const ended = new Promise<void>((resolve) => (finish = resolve));
         node.start();
-        this.playing = { node, gain };
+        this.playing = { node, gain, finish };
         node.onended = () => {
             if (this.playing?.node === node) this.playing = null;
+            finish();
+        };
+        return {
+            stop: () => {
+                if (this.playing?.node === node) this.stop();
+            },
+            ended,
         };
     }
 
@@ -214,6 +236,7 @@ export class SegmentPlayer {
             } catch {
                 /* not started */
             }
+            this.playing.finish();
             this.playing = null;
         }
     }

@@ -100,11 +100,17 @@ button.star:hover { color: #c98500; }
 button.star.starred { color: #eda100; }
 button.star:disabled { cursor: default; opacity: 0.5; }
 h1 button.star { font-size: 0.9em; }
+/* ▶/■ (pages/Favorites.tsx): a small outlined button */
+button.play { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 20px; padding: 0;
+              margin-left: 8px; vertical-align: text-bottom; font-size: 11px; line-height: 1; border-radius: 4px;
+              border: 1px solid var(--accent); background: transparent; color: var(--accent); }
+button.play:hover:not(:disabled) { background: var(--accent); color: #fff; }
+button.play.failed { border-color: var(--danger); color: var(--danger); }
 
 /* Creative Commons license icons */
-a.license { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.license { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
 a.license img { display: block; border-radius: 50%; }
-a.license span { margin-left: 4px; }
+.license span { margin-left: 4px; }
 
 /* vectors as bar charts */
 .vector { display: inline-flex; align-items: center; gap: 6px; }
@@ -132,3 +138,4 @@ th.number, td.number { text-align: right; font-variant-numeric: tabular-nums; }
 @keyframes record-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.45); } 50% { box-shadow: 0 0 0 4px rgba(229, 72, 77, 0); } }
 @media (prefers-reduced-motion: reduce) { .record-button.recording { animation: none; } }
 body.score-bar-open { padding-bottom: 64px; }
+.nowrap { white-space: nowrap; }

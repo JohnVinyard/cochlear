@@ -74,6 +74,12 @@ export type AnnotationKind = (typeof ANNOTATION_KINDS)[number];
 /** `name@version`, e.g. `tags@1` */
 export type SchemaRef = `${string}@${number}`;
 
+/**
+ * The licenses a sound can be under: a Creative Commons deed's URL, or
+ * `all-rights-reserved` for audio nobody can grant any rights to (e.g. an
+ * excerpt of a commercial recording). That one has no deed, so it isn't a URL.
+ */
+export const ALL_RIGHTS_RESERVED = 'all-rights-reserved';
 export const LICENSE_TYPES = [
     'https://creativecommons.org/licenses/by/4.0',
     'https://creativecommons.org/licenses/by-sa/4.0',
@@ -82,6 +88,7 @@ export const LICENSE_TYPES = [
     'https://creativecommons.org/licenses/by-nc-sa/4.0',
     'https://creativecommons.org/licenses/by-nc-nd/4.0',
     'https://creativecommons.org/publicdomain/zero/1.0',
+    ALL_RIGHTS_RESERVED,
 ] as const;
 export type LicenseType = (typeof LICENSE_TYPES)[number];
 

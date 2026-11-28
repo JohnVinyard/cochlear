@@ -27,3 +27,4 @@ are in [`../bots`](../bots).) Each one:
 | Integration | Dataset |
 |---|---|
 | [`musicnet/`](musicnet) | [MusicNet](https://zenodo.org/records/5120004): 330 classical recordings with 1M note labels |
+| [`phatdrumloops/`](phatdrumloops) | [phatdrumloops.com](https://www.phatdrumloops.com/beats.php): 196 drum breaks, with the site's notes on each |

@@ -1,4 +1,5 @@
 /** @group api */
+import { LICENSE_TYPES } from '@cochlea/shared';
 import { closeDb, createSound, newUser, revokeRole, soundBody } from './client';
 
 afterAll(closeDb);
@@ -22,6 +23,14 @@ describe('sounds', () => {
         });
     });
 
+    it('accepts every license, including all rights reserved', async () => {
+        const user = await newUser();
+        for (const license_type of LICENSE_TYPES) {
+            const created = await createSound(user, { license_type });
+            expect(created.license_type).toBe(license_type);
+        }
+    });
+
     it('is unique by audio_url;  a duplicate points at the original', async () => {
         const user = await newUser();
         const other = await newUser();
@@ -37,7 +46,7 @@ describe('sounds', () => {
             soundBody({ audio_url: 'not a url' }),
             soundBody({ audio_url: 'ftp://example.com/a.wav' }),
             soundBody({ duration_seconds: 0 }),
-            soundBody({ license_type: 'all rights reserved' }),
+            soundBody({ license_type: 'https://creativecommons.org/licenses/by/3.0' }),
             soundBody({ extra: true }),
         ];
         for (const body of bad) {
